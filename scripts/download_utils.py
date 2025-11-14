@@ -16,8 +16,11 @@ from typing import List, Optional
 from multiprocessing import Pool
 from tqdm import tqdm
 
+import sys
 
-from dynamic_stereo.scripts.checksum_check import check_dr_sha256
+sys.path.append("./scripts/")
+
+from checksum_check import check_dr_sha256
 
 
 def download_dataset(

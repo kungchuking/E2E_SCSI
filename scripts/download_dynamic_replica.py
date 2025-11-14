@@ -5,8 +5,10 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
+import sys
 
-from dynamic_stereo.scripts.download_utils import build_arg_parser, download_dataset
+sys.path.append("./scripts/")
+from download_utils import build_arg_parser, download_dataset
 
 
 DEFAULT_LINK_LIST_FILE = os.path.join(os.path.dirname(__file__), "links.json")

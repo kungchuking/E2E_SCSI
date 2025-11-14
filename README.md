@@ -26,25 +26,13 @@ We provide annotations for both *left and right* views, see [this notebook](http
 
 
 ### Download the Dynamic Replica dataset
-Download `links.json` from the *data* tab on the [project website](https://dynamic-stereo.github.io/) after accepting the license agreement.
+Due to the enormous size of the original dataset, we created the `links_lite.json` file to enable quick testing by downloading just a small portion of the dataset.
+
 ```
-git clone https://github.com/facebookresearch/dynamic_stereo
-cd dynamic_stereo
-export PYTHONPATH=`(cd ../ && pwd)`:`pwd`:$PYTHONPATH
-```
-Add the downloaded `links.json` file to the project folder. Use flag `download_splits` to choose dataset splits that you want to download: 
-```
-python ./scripts/download_dynamic_replica.py --link_list_file links.json \
---download_folder ./dynamic_replica_data --download_splits real valid test train
+python ./scripts/download_dynamic_replica.py --link_list_file links_lite.json --download_folder ./dynamic_replica_data --download_splits test train
 ```
 
-Memory requirements for dataset splits after unpacking (with all the annotations):
-- train - 1.8T
-- test - 328G
-- valid - 106G
-- real - 152M
-
-You can use [this PyTorch dataset class](https://github.com/facebookresearch/dynamic_stereo/blob/dfe2907faf41b810e6bb0c146777d81cb48cb4f5/datasets/dynamic_stereo_datasets.py#L287) to iterate over the dataset.
+To download the full dataset, please visit [the original site](https://github.com/facebookresearch/dynamic_stereo).
 
 ## Installation
 
