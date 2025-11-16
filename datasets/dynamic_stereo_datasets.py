@@ -5,6 +5,9 @@
 # LICENSE file in the root directory of this source tree.
 # # Data loading based on https://github.com/NVIDIA/flownet2-pytorch
 
+# -- Added by Chu King on 16th November 2025 for debugging purposes.
+import torch.distributed as dist
+import signal
 
 import os
 import copy
@@ -27,9 +30,9 @@ from pytorch3d.implicitron.dataset.types import (
     load_dataclass,
 )
 
-from dynamic_stereo.datasets import frame_utils
-from dynamic_stereo.evaluation.utils.eval_utils import depth2disparity_scale
-from dynamic_stereo.datasets.augmentor import SequenceDispFlowAugmentor
+from datasets import frame_utils
+from evaluation.utils.eval_utils import depth2disparity_scale
+from datasets.augmentor import SequenceDispFlowAugmentor
 
 
 @dataclass
@@ -212,7 +215,7 @@ class StereoSequenceDataset(data.Dataset):
         return output_tensor
 
     def __getitem__(self, index):
-        im_tensor = {"img"}
+        im_tensor = {"img": None}
         sample = self.sample_list[index]
         if self.is_test:
             sample_size = len(sample["image"]["left"])
@@ -320,6 +323,7 @@ class DynamicReplicaDataset(StereoSequenceDataset):
         split="train",
         sample_len=-1,
         only_first_n_samples=-1,
+        VERBOSE=False # -- Added by Chu King on 16th November 2025 for debugging purposes
     ):
         super(DynamicReplicaDataset, self).__init__(aug_params)
         self.root = root
@@ -340,7 +344,22 @@ class DynamicReplicaDataset(StereoSequenceDataset):
                 frame_annot
             )
 
+        # -- Added by Chu King on 16th November 2025 for debugging purposes
+        if VERBOSE:
+            rank = dist.get_rank() if dist.is_initialized() else 0
+            with open(f"debug_rank_{rank}.txt", "a") as f:
+                f.write("[INFO] seq_annot: {}\n".format(seq_annot))
+                # -- os.kill(os.getpid(), signal.SIGABRT)
+
         for seq_name in seq_annot.keys():
+
+            # -- Added by Chu King on 16th November 2025 for debugging purposes
+            if VERBOSE:
+                rank = dist.get_rank() if dist.is_initialized() else 0
+                with open(f"debug_rank_{rank}.txt", "a") as f:
+                    f.write("---- ----\n")
+                    f.write("[INFO] seq_name: {}\n".format(seq_name))
+
             try:
                 filenames = defaultdict(lambda: defaultdict(list))
                 for cam in ["left", "right"]:
@@ -349,9 +368,21 @@ class DynamicReplicaDataset(StereoSequenceDataset):
                         depth_path = osp.join(root, split, framedata.depth.path)
                         mask_path = osp.join(root, split, framedata.mask.path)
 
-                        assert os.path.isfile(im_path), im_path
-                        assert os.path.isfile(depth_path), depth_path
-                        assert os.path.isfile(mask_path), mask_path
+                        # -- Added by Chu King on 16th November 2025 for debugging purposes
+                        if VERBOSE:
+                            rank = dist.get_rank() if dist.is_initialized() else 0
+                            with open(f"debug_rank_{rank}.txt", "a") as f:
+                                f.write("[INFO] cam: {}\n".format(cam))
+                                f.write("[INFO] framedata: {}\n".format(framedata))
+                                f.write("[INFO] framedata.viewpoint: {}\n".format(framedata.viewpoint))
+                                f.write("[INFO] im_path: {}\n".format(im_path))
+                                f.write("[INFO] depth_path: {}\n".format(depth_path))
+                                f.write("[INFO] mask_path: {}\n".format(mask_path))
+
+                        # -- Modified by Chu King on 16th November 2025 to clarify the nature of assertion errors.
+                        assert os.path.isfile(im_path), "[ERROR] Rectified image path {} doesn't exist.".format(im_path)
+                        assert os.path.isfile(depth_path), "[ERROR] Depth path {} doesn't exist. ".format(depth_path)
+                        assert os.path.isfile(mask_path), "[ERROR] Mask path {} doesn't exist.".format(mask_path)
 
                         filenames["image"][cam].append(im_path)
                         filenames["depth"][cam].append(depth_path)

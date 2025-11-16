@@ -27,7 +27,7 @@ from pytorch3d.renderer import (
     PointsRasterizer,
     PointsRenderer,
 )
-from dynamic_stereo.evaluation.utils.eval_utils import depth_to_pcd
+from evaluation.utils.eval_utils import depth_to_pcd
 
 
 @dataclass

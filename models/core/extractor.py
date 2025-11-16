@@ -107,6 +107,8 @@ class BasicEncoder(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        # -- x = [L, R]
+        # -- L, R ~ (b*t, c, h, w)
 
         # if input is list, combine batch dimension
         is_list = isinstance(x, tuple) or isinstance(x, list)

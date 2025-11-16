@@ -4,6 +4,11 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+# -- Added by Chu King on 16th November 2025 for debugging purposes.
+import os, signal
+import logging
+import torch.distributed as dist
+
 from typing import Dict, List
 from einops import rearrange
 import torch
@@ -12,19 +17,19 @@ import torch.nn.functional as F
 from collections import defaultdict
 
 
-from dynamic_stereo.models.core.update import (
+from models.core.update import (
     BasicUpdateBlock,
     SequenceUpdateBlock3D,
     TimeAttnBlock,
 )
-from dynamic_stereo.models.core.extractor import BasicEncoder
-from dynamic_stereo.models.core.corr import CorrBlock1D
+from models.core.extractor import BasicEncoder
+from models.core.corr import CorrBlock1D
 
-from dynamic_stereo.models.core.attention import (
+from models.core.attention import (
     PositionEncodingSine,
     LocalFeatureTransformer,
 )
-from dynamic_stereo.models.core.utils.utils import InputPadder, interp
+from models.core.utils.utils import InputPadder, interp
 
 autocast = torch.cuda.amp.autocast
 
@@ -228,6 +233,8 @@ class DynamicStereo(nn.Module):
     def forward_sst_block(
         self, fmap1_dw16: torch.Tensor, fmap2_dw16: torch.Tensor, T: int
     ):
+        # -- fmap1_dw16 ~ (B*T, C, H, W) -- left-view features
+        # -- fmap2_dw16 ~ (B*T, C, H, W) -- right-view features
         *_, h, w = fmap1_dw16.shape
 
         # positional encoding and self-attention
@@ -336,6 +343,13 @@ class DynamicStereo(nn.Module):
         # if input is list,
         image1 = 2 * (image1 / 255.0) - 1.0
         image2 = 2 * (image2 / 255.0) - 1.0
+
+        # -- Added by Chu King on 16th November 2025 for debugging purposes
+        rank = dist.get_rank() if dist.is_initialized() else 0
+        with open(f"debug_rank_{rank}.txt", "a") as f:
+            f.write("[INFO] image1.shape: {}\n".format(image1.shape))
+            f.write("[INFO] image2.shape: {}\n".format(image2.shape))
+            # -- os.kill(os.getpid(), signal.SIGABRT)
 
         b, T, *_ = image1.shape
 

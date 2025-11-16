@@ -29,10 +29,10 @@ We provide annotations for both *left and right* views, see [this notebook](http
 Due to the enormous size of the original dataset, we created the `links_lite.json` file to enable quick testing by downloading just a small portion of the dataset.
 
 ```
-python ./scripts/download_dynamic_replica.py --link_list_file links_lite.json --download_folder ./dynamic_replica_data --download_splits test train
+python ./scripts/download_dynamic_replica.py --link_list_file links_lite.json --download_folder ./dynamic_replica_data --download_splits test train valid real
 ```
 
-To download the full dataset, please visit [the original site](https://github.com/facebookresearch/dynamic_stereo).
+To download the full dataset, please visit [the original site](https://github.com/facebookresearch/dynamic_stereo) created by Meta.
 
 ## Installation
 

@@ -35,6 +35,8 @@ class PositionEncodingSine(nn.Module):
                 We will remove the buggy impl after re-training all variants of our released models.
         """
         super().__init__()
+
+        # -- d_model: embedding dimension
         pe = torch.zeros((d_model, *max_shape))
         y_position = torch.ones(max_shape).cumsum(0).float().unsqueeze(0)
         x_position = torch.ones(max_shape).cumsum(1).float().unsqueeze(0)
@@ -148,6 +150,8 @@ class LoFTREncoderLayer(nn.Module):
         self.q_proj = nn.Linear(d_model, d_model, bias=False)
         self.k_proj = nn.Linear(d_model, d_model, bias=False)
         self.v_proj = nn.Linear(d_model, d_model, bias=False)
+
+        # -- LoFTR optionally uses linear attention (faster, avoids quadratic cost), otherwise normal softmax attention.
         self.attention = LinearAttention() if attention == "linear" else FullAttention()
         self.merge = nn.Linear(d_model, d_model, bias=False)
 

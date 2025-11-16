@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dynamic_stereo.models.core.attention import LoFTREncoderLayer
+from models.core.attention import LoFTREncoderLayer
 
 
 # Ref: https://github.com/princeton-vl/RAFT/blob/master/core/update.py
@@ -309,8 +309,14 @@ class SequenceUpdateBlock3D(nn.Module):
     def __init__(self, hidden_dim, cor_planes, mask_size=8, attention_type=None):
         super(SequenceUpdateBlock3D, self).__init__()
 
+        # -- Extracts motion-related features from:
+        #    * current flow estimate
+        #    * correlation volume
         self.encoder = BasicMotionEncoder(cor_planes)
+
+        # -- 3D separable convolution GRU enables temporal reasoning with 3D convolutions.
         self.gru = SepConvGRU3D(hidden_dim=hidden_dim, input_dim=128 + hidden_dim)
+
         self.flow_head = FlowHead3D(hidden_dim, hidden_dim=256)
         self.mask = nn.Sequential(
             nn.Conv2d(hidden_dim, hidden_dim + 128, 3, padding=1),

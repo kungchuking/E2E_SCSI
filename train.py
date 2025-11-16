@@ -17,17 +17,16 @@ import json
 from pytorch_lightning.lite import LightningLite
 from torch.cuda.amp import GradScaler
 
-from dynamic_stereo.train_utils.utils import (
+from train_utils.utils import (
     run_test_eval,
     save_ims_to_tb,
     count_parameters,
 )
-from dynamic_stereo.train_utils.logger import Logger
-from dynamic_stereo.models.core.dynamic_stereo import DynamicStereo
-from dynamic_stereo.evaluation.core.evaluator import Evaluator
-from dynamic_stereo.train_utils.losses import sequence_loss
-import dynamic_stereo.datasets.dynamic_stereo_datasets as datasets
-
+from train_utils.logger import Logger
+from models.core.dynamic_stereo import DynamicStereo
+from evaluation.core.evaluator import Evaluator
+from train_utils.losses import sequence_loss
+import datasets.dynamic_stereo_datasets as datasets
 
 def fetch_optimizer(args, model):
     """Create the optimizer and learning rate scheduler"""
@@ -47,6 +46,8 @@ def fetch_optimizer(args, model):
 
 def forward_batch(batch, model, args):
     output = {}
+    
+    print ("[INFO")
     disparities = model(
         batch["img"][:, :, 0],
         batch["img"][:, :, 1],
@@ -71,9 +72,12 @@ def forward_batch(batch, model, args):
 class Lite(LightningLite):
     def run(self, args):
         self.seed_everything(0)
+
+        # -- Modified by Chu King on 15th November 2025 to allow quick testing with only 1 training video on the workstation.
         eval_dataloader_dr = datasets.DynamicReplicaDataset(
-            split="valid", sample_len=40, only_first_n_samples=1
+            split="valid", sample_len=40, only_first_n_samples=1, VERBOSE=True
         )
+
         eval_dataloader_sintel_clean = datasets.SequenceSintelStereo(dstype="clean")
         eval_dataloader_sintel_final = datasets.SequenceSintelStereo(dstype="final")
 

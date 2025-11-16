@@ -1,10 +1,15 @@
 {
+	"real": [
+      "https://dl.fbaipublicfiles.com/dynamic_replica_v2/real/real_000.zip"
+    ],
 	 "test": [
-      "https://dl.fbaipublicfiles.com/dynamic_replica_v2/test/test_000.zip",
-      "https://dl.fbaipublicfiles.com/dynamic_replica_v2/test/test_001.zip"
+      "https://dl.fbaipublicfiles.com/dynamic_replica_v2/test/test_000.zip"
+    ],
+	 "valid": [
+      "https://dl.fbaipublicfiles.com/dynamic_replica_v2/valid/valid_000.zip",
+      "https://dl.fbaipublicfiles.com/dynamic_replica_v2/valid/valid_001.zip"
     ],
     "train": [
-      "https://dl.fbaipublicfiles.com/dynamic_replica_v2/train/train_000.zip",
       "https://dl.fbaipublicfiles.com/dynamic_replica_v2/train/train_000.zip"
     ]
   }

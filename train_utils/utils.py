@@ -12,8 +12,8 @@ import json
 import flow_vis
 import matplotlib.pyplot as plt
 
-import dynamic_stereo.datasets.dynamic_stereo_datasets as datasets
-from dynamic_stereo.evaluation.utils.utils import aggregate_and_print_results
+import datasets.dynamic_stereo_datasets as datasets
+from evaluation.utils.utils import aggregate_and_print_results
 
 
 def count_parameters(model):
@@ -21,20 +21,24 @@ def count_parameters(model):
 
 
 def run_test_eval(ckpt_path, eval_type, evaluator, model, dataloaders, writer, step):
-    for real_sequence_name in ["teddy_static", "ignacio_waving", "nikita_reading"]:
-        seq_len_real = 50
-        ds_path = f"./dynamic_replica_data/real/{real_sequence_name}"
-        real_dataset = datasets.DynamicReplicaDataset(
-            split="test", root=ds_path, sample_len=seq_len_real, only_first_n_samples=1
-        )
 
-        evaluator.evaluate_sequence(
-            model=model.module.module,
-            test_dataloader=real_dataset,
-            writer=writer,
-            step=step,
-            train_mode=True,
-        )
+    # -- Evalution of real scenes disabled by Chu King on 16th November 2025 as depth data
+    #    are not available.
+    # -- for real_sequence_name in ["teddy_static", "ignacio_waving", "nikita_reading"]:
+    # --     seq_len_real = 50
+    # --     ds_path = f"./dynamic_replica_data/real/{real_sequence_name}"
+    # --     real_dataset = datasets.DynamicReplicaDataset(
+    # --         split="test", root=ds_path, sample_len=seq_len_real, only_first_n_samples=1,
+    # --         VERBOSE=False # -- Added by Chu King on 16th November 2025 for debugging purposes
+    # --     )
+
+    # --     evaluator.evaluate_sequence(
+    # --         model=model.module.module,
+    # --         test_dataloader=real_dataset,
+    # --         writer=writer,
+    # --         step=step,
+    # --         train_mode=True,
+    # --     )
 
     for ds_name, dataloader in dataloaders:
         evaluator.visualize_interval = 1 if not "sintel" in ds_name else 0

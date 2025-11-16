@@ -12,8 +12,8 @@ from tqdm import tqdm
 from omegaconf import DictConfig
 from pytorch3d.implicitron.tools.config import Configurable
 
-from dynamic_stereo.evaluation.utils.eval_utils import depth2disparity_scale, eval_batch
-from dynamic_stereo.evaluation.utils.utils import (
+from evaluation.utils.eval_utils import depth2disparity_scale, eval_batch
+from evaluation.utils.utils import (
     PerceptionPrediction,
     pretty_print_perception_metrics,
     visualize_batch,
