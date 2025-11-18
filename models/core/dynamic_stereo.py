@@ -344,6 +344,7 @@ class DynamicStereo(nn.Module):
         image1 = 2 * (image1 / 255.0) - 1.0
         image2 = 2 * (image2 / 255.0) - 1.0
 
+        # -- TODO
         # -- Added by Chu King on 16th November 2025 for debugging purposes
         rank = dist.get_rank() if dist.is_initialized() else 0
         with open(f"debug_rank_{rank}.txt", "a") as f:
@@ -364,6 +365,12 @@ class DynamicStereo(nn.Module):
         with autocast(enabled=self.mixed_precision):
             fmap1, fmap2 = self.fnet([image1, image2])
 
+            # -- TODO
+            # -- Added by Chu King on 16th November 2025 for debugging purposes
+            with open(f"debug_rank_{rank}.txt", "a") as f:
+                f.write("[INFO] fmap1.shape: {}\n".format(fmap1.shape))
+                f.write("[INFO] fmap2.shape: {}\n".format(fmap2.shape))
+
             net, inp = torch.split(fmap1, [hdim, hdim], dim=1)
             net = torch.tanh(net)
             inp = F.relu(inp)
@@ -374,6 +381,11 @@ class DynamicStereo(nn.Module):
             fmap2_dw16 = F.avg_pool2d(fmap2, 4, stride=4)
 
             fmap1_dw16, fmap2_dw16 = self.forward_sst_block(fmap1_dw16, fmap2_dw16, T=T)
+            # -- TODO
+            # -- Added by Chu King on 16th November 2025 for debugging purposes
+            with open(f"debug_rank_{rank}.txt", "a") as f:
+                f.write("[INFO] fmap1_dw16.shape: {}\n".format(fmap1_dw16.shape))
+                f.write("[INFO] fmap2_dw16.shape: {}\n".format(fmap2_dw16.shape))
 
             net_dw16, inp_dw16 = torch.split(fmap1_dw16, [hdim, hdim], dim=1)
             net_dw16 = torch.tanh(net_dw16)
@@ -398,7 +410,7 @@ class DynamicStereo(nn.Module):
             flow = -scale * interp(flow_init, (h, w))
         else:
             # zero initialization
-            flow_dw16 = self.zero_init(fmap1_dw16)
+            flow_dw16 = self.zero_init(fmap1_dw16) # -- (N, 2, H, W)
 
             # Recurrent Update Module
             # Update 1/16
@@ -420,6 +432,12 @@ class DynamicStereo(nn.Module):
                 interp_scale=4,
                 t=T,
             )
+
+            # -- TODO
+            # -- Added by Chu King on 16th November 2025 for debugging purposes
+            with open(f"debug_rank_{rank}.txt", "a") as f:
+                f.write("[INFO] len(predictions): {}\n".format(len(predictions)))
+                f.write("[INFO] predictions[-1].shape: {}\n".format(predictions[-1].shape))
 
             scale = fmap1_dw8.shape[2] / flow.shape[2]
             flow_dw8 = -scale * interp(flow, (fmap1_dw8.shape[2], fmap1_dw8.shape[3]))

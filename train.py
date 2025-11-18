@@ -75,7 +75,7 @@ class Lite(LightningLite):
 
         # -- Modified by Chu King on 15th November 2025 to allow quick testing with only 1 training video on the workstation.
         eval_dataloader_dr = datasets.DynamicReplicaDataset(
-            split="valid", sample_len=40, only_first_n_samples=1, VERBOSE=True
+            split="valid", sample_len=40, only_first_n_samples=1, VERBOSE=False
         )
 
         eval_dataloader_sintel_clean = datasets.SequenceSintelStereo(dstype="clean")
@@ -406,7 +406,8 @@ if __name__ == "__main__":
 
     Lite(
         strategy=DDPStrategy(find_unused_parameters=True),
-        devices="auto",
+        # devices="auto",
+        devices=2,
         accelerator="gpu",
         precision=32,
     ).run(args)
