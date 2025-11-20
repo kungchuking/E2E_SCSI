@@ -406,8 +406,7 @@ if __name__ == "__main__":
 
     Lite(
         strategy=DDPStrategy(find_unused_parameters=True),
-        # devices="auto",
-        devices=2,
+        devices="auto",
         accelerator="gpu",
         precision=32,
     ).run(args)
