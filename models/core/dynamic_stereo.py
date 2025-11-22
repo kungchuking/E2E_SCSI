@@ -22,6 +22,9 @@ from models.core.update import (
     SequenceUpdateBlock3D,
     TimeAttnBlock,
 )
+
+# -- Added by Chu King on 21st November 2025
+from models.core.sci_codec import sci_decoder
 from models.core.extractor import BasicEncoder
 from models.core.corr import CorrBlock1D
 
@@ -58,12 +61,20 @@ class DynamicStereo(nn.Module):
         # -- decide whether to use 3D update blocks (like RAFT3D) or simpler 2D blocks.
         self.use_3d_update_block = use_3d_update_block
 
+        # -- Modified by Chu King on 21st November 2025
         # -- CNN encoder that extracts features from images.
         #  * output_dim: output channels
         #  * norm_fn="instance": applies instance normalization.
-        self.fnet = BasicEncoder(
-            output_dim=dim, norm_fn="instance", dropout=self.dropout
-        )
+        # -- self.fnet = BasicEncoder(
+        # --     output_dim=dim, norm_fn="instance", dropout=self.dropout
+        # -- )
+        self.fnet = sci_decoder(
+                n_frame=num_frames,
+                n_taps=2,
+                output_dim=dim,
+                norm_fn="instance",
+                dropout=self.dropout
+            )
 
         # -- Boolean flag to decide whether different update blocks are used for different resolutions.
         self.different_update_blocks = different_update_blocks
@@ -188,7 +199,7 @@ class DynamicStereo(nn.Module):
         return zero_flow
 
     def forward_batch_test(
-        self, batch_dict: Dict, kernel_size: int = 14, iters: int = 20
+        self, batch_dict: Dict, sci_enc_L, sci_enc_R, kernel_size: int = 14, iters: int = 20
     ):
         stride = kernel_size // 2
         predictions = defaultdict(list)
@@ -198,32 +209,64 @@ class DynamicStereo(nn.Module):
         num_ims = len(video)
         print("video", video.shape)
 
-        for i in range(0, num_ims, stride):
+        # -- Divide a single long sequence to multiple long sequences.
+        # -- For SCI stereo, we only test the first sequence.
+        # -- for i in range(0, num_ims, stride):
+        for i in range(1):
             left_ims = video[i : min(i + kernel_size, num_ims), 0]
-            padder = InputPadder(left_ims.shape, divis_by=32)
+            # -- padder = InputPadder(left_ims.shape, divis_by=32)
 
             right_ims = video[i : min(i + kernel_size, num_ims), 1]
-            left_ims, right_ims = padder.pad(left_ims, right_ims)
+            # -- left_ims, right_ims = padder.pad(left_ims, right_ims)
+
+            # -- Modified by Chu King on 20th November 2025
+            # 0) Convert to Gray
+            def rgb_to_gray(x):
+                weights = torch.tensor([0.2989, 0.5870, 0.1140], dtype=x.dtype, device=x.device)
+                gray = (x * weights[None, None, :, None, None]).sum(dim=2)
+                return gray # -- shape: [B, T, H, W]
+            
+            video_L = rgb_to_gray(left_ims.to(next(sci_enc_L.parameters()).device))  # ~ (b, t, h, w)
+            video_R = rgb_to_gray(right_ims.to(next(sci_enc_R.parameters()).device)) # ~ (b, t, h, w)
+
+            # 1) Extract and normalize input videos.
+            # -- min_max_norm = lambda x : 2. * (x / 255.) - 1.
+            min_max_norm = lambda x: x / 255.
+            video_L = min_max_norm(video_L)
+            video_R = min_max_norm(video_R)
+
+            # 2) If the tensor is non-contiguous and we try .view() later, PyTorch will raise an error:
+            video_L = video_L.contiguous()
+            video_R = video_R.contiguous()
+
+            # 3) Coded exposure modeling.
+            snapshot_L = sci_enc_L(video_L)
+            snapshot_R = sci_enc_L(video_R)
 
             with autocast(enabled=self.mixed_precision):
                 disparities_forw = self.forward(
-                    left_ims[None].cuda(),
-                    right_ims[None].cuda(),
+                    # -- Modified by Chu King on 20th November 2025
+                    # -- left_ims[None].cuda(),
+                    # -- right_ims[None].cuda(),
+                    snapshot_L,
+                    snapshot_R,
                     iters=iters,
                     test_mode=True,
                 )
 
-            disparities_forw = padder.unpad(disparities_forw[:, 0])[:, None].cpu()
+            # -- Padding disabled by Chu King on 20th November 2025
+            # -- disparities_forw = padder.unpad(disparities_forw[:, 0])[:, None].cpu()
+            disparities_forw = disparities_forw[:, 0][:, None].cpu()
 
-            if len(disp_preds) > 0 and len(disparities_forw) >= stride:
-
-                if len(disparities_forw) < kernel_size:
-                    disp_preds.append(disparities_forw[stride // 2 :])
-                else:
-                    disp_preds.append(disparities_forw[stride // 2 : -stride // 2])
-
-            elif len(disp_preds) == 0:
-                disp_preds.append(disparities_forw[: -stride // 2])
+            # -- We are not doing overlapping chunks in SCI stereo.
+            disp_preds.append(disparities_forw)
+            # -- if len(disp_preds) > 0 and len(disparities_forw) >= stride:
+            # --     if len(disparities_forw) < kernel_size:
+            # --         disp_preds.append(disparities_forw[stride // 2 :])
+            # --     else:
+            # --         disp_preds.append(disparities_forw[stride // 2 : -stride // 2])
+            # -- elif len(disp_preds) == 0:
+            # --     disp_preds.append(disparities_forw[: -stride // 2])
 
         predictions["disparity"] = (torch.cat(disp_preds).squeeze(1).abs())[:, :1]
         print(predictions["disparity"].shape)
@@ -340,36 +383,12 @@ class DynamicStereo(nn.Module):
 
     def forward(self, image1, image2, flow_init=None, iters=10, test_mode=False):
         """Estimate optical flow between pair of frames"""
-        # if input is list,
-        image1 = 2 * (image1 / 255.0) - 1.0
-        image2 = 2 * (image2 / 255.0) - 1.0
-
-        # -- TODO
-        # -- Added by Chu King on 16th November 2025 for debugging purposes
-        rank = dist.get_rank() if dist.is_initialized() else 0
-        with open(f"debug_rank_{rank}.txt", "a") as f:
-            f.write("[INFO] image1.shape: {}\n".format(image1.shape))
-            f.write("[INFO] image2.shape: {}\n".format(image2.shape))
-            # -- os.kill(os.getpid(), signal.SIGABRT)
-
-        b, T, *_ = image1.shape
-
-        image1 = image1.contiguous()
-        image2 = image2.contiguous()
+        b, *_ = image1.shape
 
         hdim = self.hidden_dim
 
-        image1 = rearrange(image1, "b t c h w -> (b t) c h w")
-        image2 = rearrange(image2, "b t c h w -> (b t) c h w")
-
         with autocast(enabled=self.mixed_precision):
             fmap1, fmap2 = self.fnet([image1, image2])
-
-            # -- TODO
-            # -- Added by Chu King on 16th November 2025 for debugging purposes
-            with open(f"debug_rank_{rank}.txt", "a") as f:
-                f.write("[INFO] fmap1.shape: {}\n".format(fmap1.shape))
-                f.write("[INFO] fmap2.shape: {}\n".format(fmap2.shape))
 
             net, inp = torch.split(fmap1, [hdim, hdim], dim=1)
             net = torch.tanh(net)
@@ -380,12 +399,7 @@ class DynamicStereo(nn.Module):
             fmap1_dw16 = F.avg_pool2d(fmap1, 4, stride=4)
             fmap2_dw16 = F.avg_pool2d(fmap2, 4, stride=4)
 
-            fmap1_dw16, fmap2_dw16 = self.forward_sst_block(fmap1_dw16, fmap2_dw16, T=T)
-            # -- TODO
-            # -- Added by Chu King on 16th November 2025 for debugging purposes
-            with open(f"debug_rank_{rank}.txt", "a") as f:
-                f.write("[INFO] fmap1_dw16.shape: {}\n".format(fmap1_dw16.shape))
-                f.write("[INFO] fmap2_dw16.shape: {}\n".format(fmap2_dw16.shape))
+            fmap1_dw16, fmap2_dw16 = self.forward_sst_block(fmap1_dw16, fmap2_dw16, T=self.num_frames)
 
             net_dw16, inp_dw16 = torch.split(fmap1_dw16, [hdim, hdim], dim=1)
             net_dw16 = torch.tanh(net_dw16)
@@ -430,14 +444,8 @@ class DynamicStereo(nn.Module):
                 predictions=predictions,
                 iters=iters // 2,
                 interp_scale=4,
-                t=T,
+                t=self.num_frames,
             )
-
-            # -- TODO
-            # -- Added by Chu King on 16th November 2025 for debugging purposes
-            with open(f"debug_rank_{rank}.txt", "a") as f:
-                f.write("[INFO] len(predictions): {}\n".format(len(predictions)))
-                f.write("[INFO] predictions[-1].shape: {}\n".format(predictions[-1].shape))
 
             scale = fmap1_dw8.shape[2] / flow.shape[2]
             flow_dw8 = -scale * interp(flow, (fmap1_dw8.shape[2], fmap1_dw8.shape[3]))
@@ -464,7 +472,7 @@ class DynamicStereo(nn.Module):
                 predictions=predictions,
                 iters=iters // 2,
                 interp_scale=2,
-                t=T,
+                t=self.num_frames,
             )
 
             scale = h / flow.shape[2]
@@ -487,12 +495,12 @@ class DynamicStereo(nn.Module):
             predictions=predictions,
             iters=iters,
             interp_scale=1,
-            t=T,
+            t=self.num_frames,
         )
 
         predictions = torch.stack(predictions)
 
-        predictions = rearrange(predictions, "d (b t) c h w -> d t b c h w", b=b, t=T)
+        predictions = rearrange(predictions, "d (b t) c h w -> d t b c h w", b=b, t=self.num_frames)
         flow_up = predictions[-1]
 
         if test_mode:

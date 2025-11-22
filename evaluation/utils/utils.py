@@ -224,6 +224,8 @@ def visualize_batch(
     step=0,
     sequence_name=None,
     writer=None,
+    # -- Added by Chu King on 22nd November 2025 to fix image resolution during evaluation.
+    resolution=[480, 640]
 ):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -233,7 +235,8 @@ def visualize_batch(
         device = preds.depth_map.device
 
         pcd_global_seq = []
-        H, W = batch_dict["stereo_video"].shape[3:]
+        # -- H, W = batch_dict["stereo_video"].shape[3:]
+        H, W = resolution
 
         for i in range(len(batch_dict["stereo_video"])):
             R, T, K = opencv_from_cameras_projection(
@@ -254,13 +257,13 @@ def visualize_batch(
             inv_extr_matrix = extr_matrix.inverse().to(device)
             pcd, colors = depth_to_pcd(
                 preds.depth_map[i, 0],
-                batch_dict["stereo_video"][i][0].permute(1, 2, 0),
+                batch_dict["stereo_video"][..., :resolution[0], : resolution[1]][i][0].permute(1, 2, 0),
                 K[0][0][0],
                 K[0][0][2],
                 K[0][1][2],
                 step=1,
                 inv_extrinsic=inv_extr_matrix,
-                mask=batch_dict["fg_mask"][i, 0] if only_foreground else None,
+                mask=batch_dict["fg_mask"][..., :resolution[0], : resolution[1]][i, 0] if only_foreground else None,
                 filter=False,
             )
 

@@ -164,8 +164,8 @@ def filter_outliers(pcd, sigma=3):
     pcd = pcd[inds]
     return pcd, inds
 
-
-def eval_batch(batch_dict, predictions) -> Dict[str, Union[float, torch.Tensor]]:
+# -- Modified by Chu King on 22nd November 2025 to fix the resolution during evaluation.
+def eval_batch(batch_dict, predictions, resolution=[480, 640]) -> Dict[str, Union[float, torch.Tensor]]:
     """
     Produce performance metrics for a single batch of perception
     predictions.
@@ -179,12 +179,12 @@ def eval_batch(batch_dict, predictions) -> Dict[str, Union[float, torch.Tensor]]
     results = {}
 
     assert "disparity" in predictions
-    mask_now = torch.ones_like(batch_dict["fg_mask"])
+    mask_now = torch.ones_like(batch_dict["fg_mask"][..., :resolution[0], :resolution[1]])
 
-    mask_now = mask_now * batch_dict["disparity_mask"]
+    mask_now = mask_now * batch_dict["disparity_mask"][..., :resolution[0], :resolution[1]]
 
     eval_flow_traj_output = eval_endpoint_error_sequence(
-        predictions["disparity"], batch_dict["disparity"], mask_now
+        predictions["disparity"], batch_dict["disparity"][..., :resolution[0], :resolution[1]], mask_now
     )
     for epe_name in ("epe", "temp_epe"):
         results[PerceptionMetric(f"disp_{epe_name}_mean")] = eval_flow_traj_output[

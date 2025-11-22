@@ -10,6 +10,7 @@ from pathlib import Path
 from tqdm import tqdm
 import os
 import torch
+import torch.nn as nn
 import torch.optim as optim
 
 from munch import DefaultMunch
@@ -24,9 +25,107 @@ from train_utils.utils import (
 )
 from train_utils.logger import Logger
 from models.core.dynamic_stereo import DynamicStereo
+from models.core.sci_codec import sci_encoder
 from evaluation.core.evaluator import Evaluator
 from train_utils.losses import sequence_loss
 import datasets.dynamic_stereo_datasets as datasets
+
+class wrapper(nn.Module):
+    def __init__(
+            self, 
+            sigma_range=[0, 1e-9],
+            num_frames=8,
+            in_channels=1,
+            n_taps=2,
+            resolution=[480, 640],
+            mixed_precision=True,
+            attention_type="self_stereo_temporal_update_time_update_space",
+            update_block_3d=True,
+            different_update_blocks=True,
+            train_iters=16):
+
+        super(wrapper, self).__init__()
+
+        self.train_iters = train_iters
+
+        self.sci_enc_L = sci_encoder(sigma_range=sigma_range,
+                                     n_frame=num_frames,
+                                     in_channels=in_channels,
+                                     n_taps=n_taps,
+                                     resolution=resolution)
+        self.sci_enc_R = sci_encoder(sigma_range=sigma_range,
+                                     n_frame=num_frames,
+                                     in_channels=in_channels,
+                                     n_taps=n_taps,
+                                     resolution=resolution)
+
+        self.stereo = DynamicStereo(max_disp=256,
+                                    mixed_precision=mixed_precision,
+                                    num_frames=num_frames,
+                                    attention_type=attention_type,
+                                    use_3d_update_block=update_block_3d,
+                                    different_update_blocks=different_update_blocks)
+
+    def forward(self, batch):
+        # ---- ---- FORWARD PASS ---- ----
+        # -- Modified by Chu King on 20th November 2025
+        
+        # -- print ("[INFO] batch[\"img\"].device: ", batch["img"].device)
+
+        # 0) Convert to Gray
+        def rgb_to_gray(x):
+            weights = torch.tensor([0.2989, 0.5870, 0.1140], dtype=x.dtype, device=x.device)
+            gray = (x * weights[None, None, :, None, None]).sum(dim=2)
+            return gray # -- shape: [B, T, H, W]
+        
+        video_L = rgb_to_gray(batch["img"][:, :, 0]).cuda() # ~ (b, t, h, w)
+        video_R = rgb_to_gray(batch["img"][:, :, 1]).cuda() # ~ (b, t, h, w)
+
+        # -- print ("[INFO] video_L.device: ", video_L.device)
+        
+        # 1) Extract and normalize input videos.
+        # -- min_max_norm = lambda x : 2. * (x / 255.) - 1.
+        min_max_norm = lambda x: x / 255.
+        video_L = min_max_norm(video_L) # ~ (b, t, h, w)
+        video_R = min_max_norm(video_R) # ~ (b, t, h, w)
+        # -- print ("[INFO] video_L.device: ", video_L.device)
+        
+        # 2) If the tensor is non-contiguous and we try .view() later, PyTorch will raise an error:
+        video_L = video_L.contiguous()
+        video_R = video_R.contiguous()
+
+        # -- print ("[INFO] video_L.device: ", video_L.device)
+        
+        # 3) Coded exposure modeling.
+        snapshot_L = self.sci_enc_L(video_L) # ~ (b, c, h, w) -- c=2 for 2 taps
+        snapshot_R = self.sci_enc_R(video_R) # ~ (b, c, h, w) -- c=2 for 2 taps
+
+        # -- print ("[INFO] self.sci_enc_L.device: ", next(self.sci_enc_R.parameters()).device)
+        # -- print ("[INFO] snapshot_L.device: ", snapshot_L.device)
+        
+        # 4) Dynamic Stereo
+        output = {}
+        
+        disparities = self.stereo(
+            snapshot_L,
+            snapshot_R,
+            iters=self.train_iters,
+            test_mode=False
+        )
+
+        n_views = len(batch["disp"][0])
+        for i in range(n_views):
+            seq_loss, metrics = sequence_loss(
+                disparities[:, i], batch["disp"][:, i, 0], batch["valid_disp"][:, i, 0]
+            )
+
+            output[f"disp_{i}"] = {"loss": seq_loss / n_views, "metrics": metrics}
+        output["disparity"] = {
+            "predictions": torch.cat(
+                [disparities[-1, i, 0] for i in range(n_views)], dim=1
+            ).detach(),
+        }
+        return output
 
 def fetch_optimizer(args, model):
     """Create the optimizer and learning rate scheduler"""
@@ -44,13 +143,17 @@ def fetch_optimizer(args, model):
     return optimizer, scheduler
 
 
-def forward_batch(batch, model, args):
+# -- Modified by Chu King on 20th November 2025
+# -- Take snapshots instead of videos as input.
+# -- def forward_batch(batch, model, args):
+def forward_batch(snapshot_L, snapshot_R, model, args):
     output = {}
     
-    print ("[INFO")
     disparities = model(
-        batch["img"][:, :, 0],
-        batch["img"][:, :, 1],
+        # -- batch["img"][:, :, 0],
+        # -- batch["img"][:, :, 1],
+        snapshot_L,
+        snapshot_R,
         iters=args.train_iters,
         test_mode=False,
     )
@@ -73,9 +176,12 @@ class Lite(LightningLite):
     def run(self, args):
         self.seed_everything(0)
 
+        # ----------------------------------------- Loading Dataset -----------------------------------------------
         # -- Modified by Chu King on 15th November 2025 to allow quick testing with only 1 training video on the workstation.
+        # -- The number of subframes should be fixed for SCI stereo.
         eval_dataloader_dr = datasets.DynamicReplicaDataset(
-            split="valid", sample_len=40, only_first_n_samples=1, VERBOSE=False
+            # -- split="valid", sample_len=40, only_first_n_samples=1, VERBOSE=False
+            split="valid", sample_len=args.sample_len, only_first_n_samples=1, VERBOSE=False
         )
 
         eval_dataloader_sintel_clean = datasets.SequenceSintelStereo(dstype="clean")
@@ -96,21 +202,26 @@ class Lite(LightningLite):
         eval_vis_cfg = DefaultMunch.fromDict(eval_vis_cfg, object())
         evaluator.setup_visualization(eval_vis_cfg)
 
-        model = DynamicStereo(
-            max_disp=256,
-            mixed_precision=args.mixed_precision,
-            num_frames=args.sample_len,
-            attention_type=args.attention_type,
-            use_3d_update_block=args.update_block_3d,
-            different_update_blocks=args.different_update_blocks,
-        )
-
+        # ----------------------------------------- Model Instantiation -----------------------------------------------
+        # -- Added by Chu King on 20th November 2025
+        # -- Instantiate the model
+        model = wrapper(sigma_range=[0, 1e-9],
+                        num_frames=args.sample_len,
+                        in_channels=1,
+                        n_taps=2,
+                        resolution=args.image_size,
+                        mixed_precision=args.mixed_precision,
+                        attention_type=args.attention_type,
+                        update_block_3d=args.update_block_3d,
+                        different_update_blocks=args.different_update_blocks,
+                        train_iters=args.train_iters)
+        
         with open(args.ckpt_path + "/meta.json", "w") as file:
             json.dump(vars(args), file, sort_keys=True, indent=4)
 
         model.cuda()
 
-        logging.info(f"Parameter Count:  {count_parameters(model)}")
+        logging.info("count_parameters(model): {}".format(count_parameters(model)))
 
         train_loader = datasets.fetch_dataloader(args)
         train_loader = self.setup_dataloaders(train_loader, move_to_device=False)
@@ -122,6 +233,7 @@ class Lite(LightningLite):
         total_steps = 0
         logger = Logger(model, scheduler, args.ckpt_path)
 
+        # ----------------------------------------- Loading Checkpoint -----------------------------------------------
         folder_ckpts = [
             f
             for f in os.listdir(args.ckpt_path)
@@ -155,6 +267,15 @@ class Lite(LightningLite):
             state_dict = self.load(args.restore_ckpt)
             if "model" in state_dict:
                 state_dict = state_dict["model"]
+            # -- Since we wrapped the model in torch.nn.DataParallel or torch.nn.parallel.DistributedDataParallel,
+            #    PyTorch automatically prefixes all parameter names with "module.":
+            #        state_dict = {
+            #            'module.conv1.weight': tensor(...),
+            #            'module.conv1.bias': tensor(...),
+            #            'module.fc.weight': tensor(...),
+            #            'module.fc.bias': tensor(...),
+            #        }
+            # -- So we need to strip the "module." prefix: 
             if list(state_dict.keys())[0].startswith("module."):
                 state_dict = {
                     k.replace("module.", ""): v for k, v in state_dict.items()
@@ -162,14 +283,17 @@ class Lite(LightningLite):
             model.load_state_dict(state_dict, strict=strict)
 
             logging.info(f"Done loading checkpoint")
+        # ----------------------------------------- Optimzer, Scheduler -----------------------------------------------
+
         model, optimizer = self.setup(model, optimizer, move_to_device=False)
         model.cuda()
         model.train()
-        model.module.module.freeze_bn()  # We keep BatchNorm frozen
+        model.module.module.stereo.freeze_bn() # -- We keep BatchNorm frozen
 
         save_freq = args.save_freq
         scaler = GradScaler(enabled=args.mixed_precision)
 
+        # ----------------------------------------- Training Loop -----------------------------------------------
         should_keep_training = True
         global_batch_num = 0
         epoch = -1
@@ -181,12 +305,15 @@ class Lite(LightningLite):
                 if batch is None:
                     print("batch is None")
                     continue
+
                 for k, v in batch.items():
                     batch[k] = v.cuda()
 
                 assert model.training
 
-                output = forward_batch(batch, model, args)
+                # ---- ---- FORWARD PASS ---- ----
+                # -- Modified by Chu King on 20th November 2025
+                output = model(batch)
 
                 loss = 0
                 logger.update()
@@ -212,8 +339,11 @@ class Lite(LightningLite):
                     global_batch_num += 1
                 self.barrier()
 
+                # ---- ---- BACKWARD PASS ---- ----
                 self.backward(scaler.scale(loss))
                 scaler.unscale_(optimizer)
+
+                # -- Prevent exploding gradients in RNNs or very deep networks
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
                 scaler.step(optimizer)
@@ -241,20 +371,29 @@ class Lite(LightningLite):
                         logging.info(f"Saving file {save_path}")
                         self.save(save_dict, save_path)
 
+                        # ---- ---- EVALUATION ---- ----
                         if epoch % args.evaluate_every_n_epoch == 0:
+                            # -- Added by Chu King on 21st November 2025
+                            model.eval()
+
                             logging.info(f"Evaluation at epoch {epoch}")
                             run_test_eval(
                                 args.ckpt_path,
                                 "valid",
                                 evaluator,
-                                model,
+                                model.module.module.sci_enc_L,
+                                model.module.module.sci_enc_R,
+                                model.module.module.stereo,
                                 eval_dataloaders,
                                 logger.writer,
                                 total_steps,
+                                resolution=args.image_size
                             )
 
+                            # -- Added by Chu King on 20th November 2025 for SCI stereo
                             model.train()
-                            model.module.module.freeze_bn()
+
+                            model.module.module.stereo.freeze_bn()
 
                 self.barrier()
                 if total_steps > args.num_steps:
@@ -262,25 +401,38 @@ class Lite(LightningLite):
                     break
 
         logger.close()
-        PATH = f"{args.ckpt_path}/{args.name}_final.pth"
+        # ----------------------------------------- Save models after training -----------------------------------------------
+        # -- Modified by Chu King on 20th November 2025 to save SCI encoders' models.
+        # -- PATH = f"{args.ckpt_path}/{args.name}_final.pth"
+        PATH = f"{args.ckpt_path}/{args.name}_model_final.pth"
         torch.save(model.module.module.state_dict(), PATH)
 
+        # ----------------------------------------- Testing -----------------------------------------------
+        # -- Modified by Chu King on 20th November 2025
         test_dataloader_dr = datasets.DynamicStereoDataset(
-            split="test", sample_len=150, only_first_n_samples=1
+            # -- The number of subframes should be fixed for SCI stereo
+            # -- split="test", sample_len=150, only_first_n_samples=1
+            split="test", sample_len=args.sample_len, only_first_n_samples=1
         )
         test_dataloaders = [
             ("sintel_clean", eval_dataloader_sintel_clean),
             ("sintel_final", eval_dataloader_sintel_final),
             ("dynamic_replica", test_dataloader_dr),
         ]
+
+        # -- Modifed by Chu King on 21st November 2025
+        model.eval()
         run_test_eval(
             args.ckpt_path,
             "test",
             evaluator,
-            model,
+            model.module.module.sci_enc_L,
+            model.module.module.sci_enc_R,
+            model.module.module.stereo,
             test_dataloaders,
             logger.writer,
             total_steps,
+            resolution=args.image_size
         )
 
 

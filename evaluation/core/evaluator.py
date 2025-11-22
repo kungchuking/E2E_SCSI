@@ -40,6 +40,8 @@ class Evaluator(Configurable):
     @torch.no_grad()
     def evaluate_sequence(
         self,
+        sci_enc_L,
+        sci_enc_R,
         model,
         test_dataloader: torch.utils.data.DataLoader,
         is_real_data: bool = False,
@@ -47,8 +49,11 @@ class Evaluator(Configurable):
         writer=None,
         train_mode=False,
         interp_shape=None,
+        resolution=[480, 640]
     ):
-        model.eval()
+        # -- Modified by Chu King on 20th November 2025 for SCI Stereo.
+        # -- model.eval()
+
         per_batch_eval_results = []
 
         if self.visualize_interval > 0:
@@ -59,7 +64,7 @@ class Evaluator(Configurable):
             batch_dict["stereo_video"] = sequence["img"]
             if not is_real_data:
                 batch_dict["disparity"] = sequence["disp"][:, 0].abs()
-                batch_dict["disparity_mask"] = sequence["valid_disp"][:, :1]
+                batch_dict["disparity_mask"] = sequence["valid_disp"][:, :1] # ~ (T, 1, 720, 1280)
 
                 if "mask" in sequence:
                     batch_dict["fg_mask"] = sequence["mask"][:, :1]
@@ -78,17 +83,26 @@ class Evaluator(Configurable):
                 )
                 batch_dict["stereo_video"] = torch.stack([left_video, right_video], 1)
 
+            # -- This method is always invoked with train_mode=True.
             if train_mode:
-                predictions = model.forward_batch_test(batch_dict)
+                # -- Modified by Chu King on 20th November 2025.
+                # -- predictions = model.forward_batch_test(batch_dict)
+                predictions = model.forward_batch_test(batch_dict, sci_enc_L, sci_enc_R)
             else:
                 predictions = model(batch_dict)
 
             assert "disparity" in predictions
             predictions["disparity"] = predictions["disparity"][:, :1].clone().cpu()
 
+            # -- print ("[INFO] predictions[\"disparity\"].shape", predictions["disparity"].shape)
+            # -- print ("[INFO] batch_dict[\"disparity_mask\"][..., :resolution[0], :resolution[1]].shape", batch_dict["disparity_mask"][..., :resolution[0], :resolution[1]].shape)
+            # -- print ("[INFO] batch_dict[\"disparity_mask\"][..., :resolution[0], :resolution[1]].round().shape", batch_dict["disparity_mask"][..., :resolution[0], :resolution[1]].round().shape)
+
             if not is_real_data:
                 predictions["disparity"] = predictions["disparity"] * (
-                    batch_dict["disparity_mask"].round()
+                    # -- Modified by Chu King on 22nd November 2025
+                    # -- batch_dict["disparity_mask"].round()
+                    batch_dict["disparity_mask"][..., :resolution[0], :resolution[1]].round()
                 )
 
                 batch_eval_result, seq_length = eval_batch(batch_dict, predictions)
@@ -117,10 +131,9 @@ class Evaluator(Configurable):
 
                 perception_prediction.perspective_cameras = perspective_cameras
 
+                # -- Modified by Chu King on 22nd November 2025 to fix image resolution during training.
                 if "stereo_original_video" in batch_dict:
-                    batch_dict["stereo_video"] = batch_dict[
-                        "stereo_original_video"
-                    ].clone()
+                    batch_dict["stereo_video"] = batch_dict["stereo_original_video"][..., :resolution[0], :resolution[1]].clone()
 
                 for k, v in batch_dict.items():
                     if isinstance(v, torch.Tensor):
@@ -133,5 +146,7 @@ class Evaluator(Configurable):
                     sequence_name=sequence["metadata"][0][0][0],
                     step=step,
                     writer=writer,
+                    # -- Added by Chu King on 22nd November 2025 to fix image resolution during evaluation.
+                    resolution=resolution
                 )
         return per_batch_eval_results

@@ -20,7 +20,7 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def run_test_eval(ckpt_path, eval_type, evaluator, model, dataloaders, writer, step):
+def run_test_eval(ckpt_path, eval_type, evaluator, sci_enc_L, sci_enc_R, model, dataloaders, writer, step, resolution=[480, 640]):
 
     # -- Evalution of real scenes disabled by Chu King on 16th November 2025 as depth data
     #    are not available.
@@ -44,11 +44,14 @@ def run_test_eval(ckpt_path, eval_type, evaluator, model, dataloaders, writer, s
         evaluator.visualize_interval = 1 if not "sintel" in ds_name else 0
 
         evaluate_result = evaluator.evaluate_sequence(
-            model=model.module.module,
+            sci_enc_L=sci_enc_L,
+            sci_enc_R=sci_enc_R,
+            model=model,
             test_dataloader=dataloader,
             writer=writer if not "sintel" in ds_name else None,
             step=step,
             train_mode=True,
+            resolution=resolution
         )
 
         aggregate_result = aggregate_and_print_results(
