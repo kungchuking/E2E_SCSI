@@ -557,7 +557,8 @@ if __name__ == "__main__":
     from pytorch_lightning.strategies import DDPStrategy
 
     Lite(
-        strategy=DDPStrategy(find_unused_parameters=True),
+        # -- strategy=DDPStrategy(find_unused_parameters=True),
+        strategy=DDPStrategy(find_unused_parameters=False),
         devices="auto",
         accelerator="gpu",
         precision=32,
