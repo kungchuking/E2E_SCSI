@@ -23,7 +23,7 @@ setenv PYTORCH_CUDA_ALLOC_CONF "max_split_size_mb:32,garbage_collection_threshol
 setenv CUDA_LAUNCH_BLOCKING 1
 setenv PYTORCH_NO_CUDA_MEMORY_CACHING 1
 setenv CUBLAS_WORKSPACE_CONFIG ":16:8"
-setenv CUDA_VISIBLE_DEVICES 3
+# -- setenv CUDA_VISIBLE_DEVICES 0,1,2
 
 # -- GPU OOM Error when trained with sample_len=8 on kilby.
 python train.py --batch_size 1 \

@@ -148,7 +148,7 @@ def sequence_loss(flow_preds, flow_gt, valid, loss_gamma=0.9, max_flow=700):
             print ("[INFO] EPE sample:", epe.view(-1)[:10])
             print ("[INFO] Valid sample:", valid.view(-1)[:10])
 
-            visualize_flow_debug(flow_preds[-1], flow_gt, v, step=0, save_path="debug"):
+            visualize_flow_debug(flow_preds[-1], flow_gt, v, step=0, save_path="debug")
             raise SystemExit("Nan detected.")
 
     return flow_loss, metrics
