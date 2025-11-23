@@ -282,9 +282,7 @@ class DynamicStereo(nn.Module):
 
         # positional encoding and self-attention
         pos_encoding_fn_small = PositionEncodingSine(d_model=self.dim, max_shape=(h, w))
-        # 'n c h w -> n (h w) c'
         fmap1_dw16 = pos_encoding_fn_small(fmap1_dw16)
-        # 'n c h w -> n (h w) c'
         fmap2_dw16 = pos_encoding_fn_small(fmap2_dw16)
 
         if self.attention_type is not None:

@@ -191,8 +191,13 @@ class Attention(nn.Module):
 
     def forward(self, x):
         B, N, C = x.shape
-        qkv = x.reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-        q, k, v = qkv, qkv, qkv
+        # -- Bug fixed by Chu King on 22nd November 2025
+        qkv = self.qkv(x)
+        # -- qkv = x.reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+        qkv = qkv.view(B, N, 3, self.num_heads, C // self.num_heads)
+        qkv = qkv.permute(0, 3, 1, 2, 4) # -- (B, H, N, 3, -1)
+        # -- q, k, v = qkv, qkv, qkv
+        q, k, v = qkv.unbind(dim=3)
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
 
