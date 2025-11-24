@@ -323,7 +323,8 @@ class DynamicReplicaDataset(StereoSequenceDataset):
         split="train",
         sample_len=-1,
         only_first_n_samples=-1,
-        VERBOSE=False # -- Added by Chu King on 16th November 2025 for debugging purposes
+        t_step_validation=1,     # -- Added by Chu King on 24th November 2025 to control the separation between consecutive samples in validation 
+        VERBOSE=False            # -- Added by Chu King on 16th November 2025 for debugging purposes
     ):
         super(DynamicReplicaDataset, self).__init__(aug_params)
         self.root = root
@@ -331,7 +332,6 @@ class DynamicReplicaDataset(StereoSequenceDataset):
         self.split = split
 
         frame_annotations_file = f"frame_annotations_{split}.jgz"
-        print ("tmp")
 
         with gzip.open(
             osp.join(root, split, frame_annotations_file), "rt", encoding="utf8"
@@ -384,16 +384,17 @@ class DynamicReplicaDataset(StereoSequenceDataset):
                         assert os.path.isfile(im_path), "[ERROR] Rectified image path {} doesn't exist.".format(im_path)
 
                         tokens = root.split("/")
-                        print (tokens)
-                        print ("real" not in tokens)
-                        if split != "test" and "real" not in tokens:
-                            assert os.path.isfile(depth_path), "[ERROR] Depth path {} doesn't exist. ".format(depth_path)
+                        # -- if split != "test" and "real" not in tokens:
+                        # --     assert os.path.isfile(depth_path), "[ERROR] Depth path {} doesn't exist. ".format(depth_path)
+                        if not os.path.isfile(depth_path):
+                            if split != "test" or "real" not in tokens:
+                                print ("[WARNING] Depth path {} doesn't exist.".format(depth_path))
+
                         assert os.path.isfile(mask_path), "[ERROR] Mask path {} doesn't exist.".format(mask_path)
 
                         filenames["image"][cam].append(im_path)
-                        filenames["depth"][cam].append(depth_path)
                         filenames["mask"][cam].append(mask_path)
-
+                        filenames["depth"][cam].append(depth_path)
                         filenames["viewpoint"][cam].append(framedata.viewpoint)
                         filenames["metadata"][cam].append(
                             [framedata.sequence_name, framedata.image.size]
@@ -405,6 +406,9 @@ class DynamicReplicaDataset(StereoSequenceDataset):
                                 == len(filenames["image"][cam])
                                 > 0
                             ), framedata.sequence_name
+
+                if not os.path.isfile(depth_path):
+                    del filenames["depth"]
 
                 seq_len = len(filenames["image"][cam])
 
@@ -434,7 +438,9 @@ class DynamicReplicaDataset(StereoSequenceDataset):
                     for ref_idx in range(0, seq_len, step):
                         sample = defaultdict(lambda: defaultdict(list))
                         for cam in ["left", "right"]:
-                            for idx in range(ref_idx, ref_idx + step):
+                            # -- Modified by Chu King on 24th November 2025 to control the separation between samples during validation.
+                            # -- for idx in range(ref_idx, ref_idx + step):
+                            for idx in range(ref_idx, ref_idx + step, t_step_validation):
                                 for k in filenames.keys():
                                     sample[k][cam].append(filenames[k][cam][idx])
 
