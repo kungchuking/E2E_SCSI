@@ -331,6 +331,7 @@ class DynamicReplicaDataset(StereoSequenceDataset):
         self.split = split
 
         frame_annotations_file = f"frame_annotations_{split}.jgz"
+        print ("tmp")
 
         with gzip.open(
             osp.join(root, split, frame_annotations_file), "rt", encoding="utf8"
@@ -381,7 +382,12 @@ class DynamicReplicaDataset(StereoSequenceDataset):
 
                         # -- Modified by Chu King on 16th November 2025 to clarify the nature of assertion errors.
                         assert os.path.isfile(im_path), "[ERROR] Rectified image path {} doesn't exist.".format(im_path)
-                        assert os.path.isfile(depth_path), "[ERROR] Depth path {} doesn't exist. ".format(depth_path)
+
+                        tokens = root.split("/")
+                        print (tokens)
+                        print ("real" not in tokens)
+                        if split != "test" and "real" not in tokens:
+                            assert os.path.isfile(depth_path), "[ERROR] Depth path {} doesn't exist. ".format(depth_path)
                         assert os.path.isfile(mask_path), "[ERROR] Mask path {} doesn't exist.".format(mask_path)
 
                         filenames["image"][cam].append(im_path)
@@ -405,7 +411,9 @@ class DynamicReplicaDataset(StereoSequenceDataset):
                 print("seq_len", seq_name, seq_len)
                 if split == "train":
                     for ref_idx in range(0, seq_len, 3):
-                        step = 1 if self.sample_len == 1 else np.random.randint(1, 6)
+                        # -- step = 1 if self.sample_len == 1 else np.random.randint(1, 6)
+                        # -- Modified by Chu King on 24th November 2025 to handle high-speed motion.
+                        step = 1 if self.sample_len == 1 else np.random.randint(1, 16)
                         if ref_idx + step * self.sample_len < seq_len:
                             sample = defaultdict(lambda: defaultdict(list))
                             for cam in ["left", "right"]:
