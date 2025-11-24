@@ -30,13 +30,13 @@ def flow_to_rgb(flow):
 def visualize_flow_debug(flow_pred, flow_gt, epe, step=0, save_path="debug"):
     flow_pred_np = flow_pred.detach().cpu().numpy()
     flow_gt_np   = flow_gt.detach().cpu().numpy()
-    epe_np       = epe.detach().cpu().numpy()
+    epe_np       = epe
 
     flow_pred0 = flow_pred_np[0, 0, :, :]
     flow_gt0   = flow_gt_np[0, 0, :, :]
-    epe0       = epe_np[0, 0, :, :]
+    epe0       = epe_np
 
-    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+    fig, axs = plt.subplots(1, 2, figsize=(15, 5))
 
     axs[0].imshow(flow_to_rgb(flow_pred0))
     axs[0].set_title("Predicted Flow")
@@ -46,9 +46,9 @@ def visualize_flow_debug(flow_pred, flow_gt, epe, step=0, save_path="debug"):
     axs[1].set_title("Ground Truth Flow")
     axs[1].axis("off")
 
-    axs[2].imshow(epe0, cmap="inferno")
-    axs[2].set_title("EPE heatmap")
-    axs[2].axis("off")
+    # -- axs[2].imshow(epe0, cmap="inferno")
+    # -- axs[2].set_title("EPE heatmap")
+    # -- axs[2].axis("off")
 
     fig.suptitle(f"STEP = {step}")
 
@@ -107,12 +107,16 @@ def sequence_loss(flow_preds, flow_gt, valid, loss_gamma=0.9, max_flow=700):
     epe = epe.view(-1)
     epe = epe[valid.reshape(epe.shape)]
 
-    metrics = {
-        "epe": epe.mean().item(),
-        "1px": (epe < 1).float().mean().item(),
-        "3px": (epe < 3).float().mean().item(),
-        "5px": (epe < 5).float().mean().item(),
-    }
+    # -- Added by Chu King to deal with the case when there is no valid disparity.
+    if valid.sum().item() == 0:
+        metrics = {"epe": 0.0, "1px": 0.0, "3px": 0.0, "5px": 0.0}
+    else:
+        metrics = {
+            "epe": epe.mean().item(),
+            "1px": (epe < 1).float().mean().item(),
+            "3px": (epe < 3).float().mean().item(),
+            "5px": (epe < 5).float().mean().item(),
+        }
 
     for k, v in metrics.items():
         if math.isnan(v):

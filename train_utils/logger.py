@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 class Logger:
 
-    SUM_FREQ = 3
+    SUM_FREQ = 100
 
     def __init__(self, model, scheduler, ckpt_path):
         self.model = model
