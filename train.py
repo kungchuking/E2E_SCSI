@@ -112,8 +112,8 @@ class wrapper(nn.Module):
             iters=self.train_iters,
             test_mode=False
         )
-
-        n_views = len(batch["disp"][0])
+        
+        n_views = len(batch["disp"][0]) # -- sample_len
         for i in range(n_views):
             seq_loss, metrics = sequence_loss(
                 disparities[:, i], batch["disp"][:, i, 0], batch["valid_disp"][:, i, 0]

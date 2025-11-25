@@ -269,7 +269,6 @@ class DynamicStereo(nn.Module):
             # --     disp_preds.append(disparities_forw[: -stride // 2])
 
         predictions["disparity"] = (torch.cat(disp_preds).squeeze(1).abs())[:, :1]
-        print(predictions["disparity"].shape)
 
         return predictions
 
