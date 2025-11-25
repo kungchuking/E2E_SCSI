@@ -417,7 +417,7 @@ class DynamicReplicaDataset(StereoSequenceDataset):
                     for ref_idx in range(0, seq_len, 3):
                         # -- step = 1 if self.sample_len == 1 else np.random.randint(1, 6)
                         # -- Modified by Chu King on 24th November 2025 to handle high-speed motion.
-                        step = 1 if self.sample_len == 1 else np.random.randint(1, 16)
+                        step = 1 if self.sample_len == 1 else np.random.randint(1, 12)
                         if ref_idx + step * self.sample_len < seq_len:
                             sample = defaultdict(lambda: defaultdict(list))
                             for cam in ["left", "right"]:
@@ -440,7 +440,7 @@ class DynamicReplicaDataset(StereoSequenceDataset):
                         for cam in ["left", "right"]:
                             # -- Modified by Chu King on 24th November 2025 to control the separation between samples during validation.
                             # -- for idx in range(ref_idx, ref_idx + step):
-                            for idx in range(ref_idx, ref_idx + step, t_step_validation):
+                            for idx in range(ref_idx, ref_idx + step * t_step_validation, t_step_validation):
                                 for k in filenames.keys():
                                     sample[k][cam].append(filenames[k][cam][idx])
 
