@@ -161,15 +161,6 @@ class BasicMotionEncoder(nn.Module):
         self.conv = nn.Conv2d(64 + 192, 128 - 2, 3, padding=1)
 
     def forward(self, flow, corr):
-        # -- TODO
-        # -- Added by Chu King on 16th November 2025 for debugging purposes
-        rank = dist.get_rank() if dist.is_initialized() else 0
-        # -- TODO
-        # -- Added by Chu King on 16th November 2025 for debugging purposes
-        with open(f"debug_rank_{rank}.txt", "a") as f:
-            f.write("[INFO] flow.shape: {}\n".format(flow.shape))
-            f.write("[INFO] corr.shape: {}\n".format(corr.shape))
-
         cor = F.relu(self.convc1(corr))
         cor = F.relu(self.convc2(cor))
         flo = F.relu(self.convf1(flow))
@@ -357,26 +348,12 @@ class SequenceUpdateBlock3D(nn.Module):
         motion_features = self.encoder(flows, corrs)
         inp_tensor = torch.cat([inp, motion_features], dim=1)
 
-        # -- TODO
-        # -- Added by Chu King on 16th November 2025 for debugging purposes
-        rank = dist.get_rank() if dist.is_initialized() else 0
-        # -- TODO
-        # -- Added by Chu King on 16th November 2025 for debugging purposes
-        with open(f"debug_rank_{rank}.txt", "a") as f:
-            f.write("[INFO] inp_tensor.shape: {}\n".format(inp_tensor.shape))
-
         if self.attention_type is not None:
             if "update_time" in self.attention_type:
                 inp_tensor = self.time_attn(inp_tensor, T=t)
 
-            with open(f"debug_rank_{rank}.txt", "a") as f:
-                f.write("[INFO] After time attention, inp_tensor.shape: {}\n".format(inp_tensor.shape))
-
             if "update_space" in self.attention_type:
                 inp_tensor = self.space_attn(inp_tensor, T=t)
-
-            with open(f"debug_rank_{rank}.txt", "a") as f:
-                f.write("[INFO] After space attention, inp_tensor.shape: {}\n".format(inp_tensor.shape))
 
         net = rearrange(net, "(b t) c h w -> b c t h w", t=t)
         inp_tensor = rearrange(inp_tensor, "(b t) c h w -> b c t h w", t=t)
