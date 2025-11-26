@@ -17,8 +17,7 @@ python ./scripts/download_dynamic_replica.py --link_list_file links_lite.json --
 To download the full dataset, please visit [the original site](https://github.com/facebookresearch/dynamic_stereo) created by Meta.
 
 ## Installation
-
-Describes installation of DynamicStereo with the latest PyTorch3D, PyTorch 1.12.1 & cuda 11.3
+To set up and run the project, please follow these steps.
 
 ### Setup the root for all source files:
 ```
@@ -40,68 +39,24 @@ pip install -r requirements.txt
 ## Evaluation
 To download the checkpoints, you can follow the below instructions:
 ```
-mkdir checkpoints
-cd checkpoints
-wget https://dl.fbaipublicfiles.com/dynamic_replica_v1/dynamic_stereo_sf.pth 
-wget https://dl.fbaipublicfiles.com/dynamic_replica_v1/dynamic_stereo_dr_sf.pth 
-cd ..
+mkdir dynamicstereo_sf_dr
+wget -O dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth "https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth"
 ```
-You can also download the checkpoints manually by clicking the links below. Copy the checkpoints to `./dynamic_stereo/checkpoints`.
+You can also download the checkpoints manually by clicking the [link](https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth). Copy the checkpoints to `./dynamicstereo_sf_dr/`.
 
-- [DynamicStereo](https://dl.fbaipublicfiles.com/dynamic_replica_v1/dynamic_stereo_sf.pth) trained on SceneFlow
-- [DynamicStereo](https://dl.fbaipublicfiles.com/dynamic_replica_v1/dynamic_stereo_dr_sf.pth) trained on SceneFlow and *Dynamic Replica*
-
-To evaluate DynamicStereo:
-```
-python ./evaluation/evaluate.py --config-name eval_dynamic_replica_40_frames \
- MODEL.model_name=DynamicStereoModel exp_dir=./outputs/test_dynamic_replica_ds \
- MODEL.DynamicStereoModel.model_weights=./checkpoints/dynamic_stereo_sf.pth 
-```
-Due to the high image resolution, evaluation on *Dynamic Replica* requires a 32GB GPU. If you don't have enough GPU memory, you can decrease `kernel_size` from 20 to 10 by adding `MODEL.DynamicStereoModel.kernel_size=10` to the above python command. Another option is to decrease the dataset resolution.
-
-As a result, you should see the numbers from *Table 5* in the [paper](https://arxiv.org/pdf/2305.02296.pdf). (for this, you need `kernel_size=20`)
-
-Reconstructions of all the *Dynamic Replica* splits (including *real*) will be visualized and saved to `exp_dir`.
-
-If you installed [RAFT-Stereo](https://github.com/princeton-vl/RAFT-Stereo), you can run:
-```
-python ./evaluation/evaluate.py --config-name eval_dynamic_replica_40_frames \
-  MODEL.model_name=RAFTStereoModel exp_dir=./outputs/test_dynamic_replica_raft
-```
-
-Other public datasets we use: 
- - [SceneFlow](https://lmb.informatik.uni-freiburg.de/resources/datasets/SceneFlowDatasets.en.html)
- - [Sintel](http://sintel.is.tue.mpg.de/stereo)
- - [Middlebury](https://vision.middlebury.edu/stereo/data/)
- - [ETH3D](https://www.eth3d.net/datasets#low-res-two-view-training-data)
- - [KITTI 2015](http://www.cvlibs.net/datasets/kitti/eval_stereo.php) 
+For evaluation, see [this notebook](https://github.com/kungchuking/E2E_SCSI/blob/master/notebooks/evaluate.ipynb).
 
 ## Training
-Training requires a 32GB GPU. You can decrease `image_size` and / or `sample_len` if you don't have enough GPU memory.
-You need to donwload SceneFlow before training. Alternatively, you can only train on *Dynamic Replica*.
+Training requires a 50GB GPU. You can decrease `image_size` and / or `sample_len` if you don't have enough GPU memory.
+However, we chose an `image_size` of 480x640 because it is the resolution of the coded-exposure camera we custom-designed in our lab for research.
+If you reduce `sample_length`, your effective compression ratio for SCI is reduced. 
+You need to donwload *Dynamic Replica* before training.
+If you are on a Linux machine, run `./train.csh` for training:
 ```
-python train.py --batch_size 1 \
- --spatial_scale -0.2 0.4 --image_size 384 512 --saturation_range 0 1.4 --num_steps 200000  \
- --ckpt_path dynamicstereo_sf_dr  \
-  --sample_len 5 --lr 0.0003 --train_iters 10 --valid_iters 20    \
-  --num_workers 28 --save_freq 100  --update_block_3d --different_update_blocks \
-  --attention_type self_stereo_temporal_update_time_update_space --train_datasets dynamic_replica things monkaa driving
+./train.csh
 ```
-If you want to train on SceneFlow only, remove the flag `dynamic_replica` from `train_datasets`.
-
-
+Alternatively, you can manually copy and paste the python execution intstruction in the file if your are training on Windows.
 
 ## License
-The majority of dynamic_stereo is licensed under CC-BY-NC, however portions of the project are available under separate license terms: [RAFT-Stereo](https://github.com/princeton-vl/RAFT-Stereo) is licensed under the MIT license, [LoFTR](https://github.com/zju3dv/LoFTR) and [CREStereo](https://github.com/megvii-research/CREStereo) are licensed under the Apache 2.0 license.
+[DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) is licensed under CC-BY-NC, however portions of the project are available under separate license terms: [RAFT-Stereo](https://github.com/princeton-vl/RAFT-Stereo) is licensed under the MIT license, [LoFTR](https://github.com/zju3dv/LoFTR) and [CREStereo](https://github.com/megvii-research/CREStereo) are licensed under the Apache 2.0 license.
 
-
-## Citing DynamicStereo
-If you use DynamicStereo or Dynamic Replica in your research, please use the following BibTeX entry.
-```
-@article{karaev2023dynamicstereo,
-  title={DynamicStereo: Consistent Dynamic Depth from Stereo Videos},
-  author={Nikita Karaev and Ignacio Rocco and Benjamin Graham and Natalia Neverova and Andrea Vedaldi and Christian Rupprecht},
-  journal={CVPR},
-  year={2023}
-}
-```
