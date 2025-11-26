@@ -37,25 +37,33 @@ pip install -r requirements.txt
 ```
 
 ## Evaluation
-To download the checkpoints, you can follow the below instructions:
+To download the pre-trained model weights (checkpoints), please follow the instructions below.
+
+### Command Line Download
+You can use the following commands to create the required directory and download the primary checkpoint directly from the Hugging Face repository:
 ```
 mkdir dynamicstereo_sf_dr
 wget -O dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth "https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth"
 ```
-You can also download the checkpoints manually by clicking the [link](https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth). Copy the checkpoints to `./dynamicstereo_sf_dr/`.
+### Manual Download
+Alternatively, you can manually download the checkpoints by clicking the [link](https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth). Ensure the downloaded file is placed in the required path: `./dynamicstereo_sf_dr/`.
 
-For evaluation, see [this notebook](https://github.com/kungchuking/E2E_SCSI/blob/master/notebooks/evaluate.ipynb).
+### Evaluation Notebook
+For detailed instructions on how to evaluate the model, please refer to the dedicated [evaluation notebook](https://github.com/kungchuking/E2E_SCSI/blob/master/notebooks/evaluate.ipynb).
 
 ## Training
-Training requires a 50GB GPU. You can decrease `image_size` and / or `sample_len` if you don't have enough GPU memory.
-However, we chose an `image_size` of 480x640 because it is the resolution of the coded-exposure camera we custom-designed in our lab for research.
-If you reduce `sample_length`, your effective compression ratio for SCI is reduced. 
-You need to donwload *Dynamic Replica* before training.
-If you are on a Linux machine, run `./train.csh` for training:
+### Hardware and Memory Requirements
+Training the model requires a minimum of a 50GB GPU.
+* Memory Adjustment: If your GPU memory is limited, you may decrease the `image_size` and/or the `sample_len` parameters.
+* Resolution Note: The chosen `image_size` of 480x640 corresponds to the native resolution of the custom-designed coded-exposure camera used for our research.
+* Compression Impact: Reducing the `sample_length` will inherently decrease the effective compression ratio for the Snapshot Compressed Imaging (SCI) process.
+Before starting training, you must download the Dynamic Replica dataset.
+### Execution
+If you are running on a Linux machine, use the provided shell script for training:
 ```
 ./train.csh
 ```
-Alternatively, you can manually copy and paste the python execution intstruction in the file if your are training on Windows.
+For other operating systems, you can open the `./train.csh` file and manually copy and execute the instruction.
 
 ## License
 [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) is licensed under CC-BY-NC, however portions of the project are available under separate license terms: [RAFT-Stereo](https://github.com/princeton-vl/RAFT-Stereo) is licensed under the MIT license, [LoFTR](https://github.com/zju3dv/LoFTR) and [CREStereo](https://github.com/megvii-research/CREStereo) are licensed under the Apache 2.0 license.
