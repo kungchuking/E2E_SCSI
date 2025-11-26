@@ -54,9 +54,9 @@ For detailed instructions on how to evaluate the model, please refer to the dedi
 ## Training
 ### Hardware and Memory Requirements
 Training the model requires a minimum of a 50GB GPU.
-* Memory Adjustment: If your GPU memory is limited, you may decrease the `image_size` and/or the `sample_len` parameters.
-* Resolution Note: The chosen `image_size` of 480x640 corresponds to the native resolution of the custom-designed coded-exposure camera used for our research.
-* Compression Impact: Reducing the `sample_length` will inherently decrease the effective compression ratio for the Snapshot Compressed Imaging (SCI) process.
+* **Memory Adjustment**: If your GPU memory is limited, you may decrease the `image_size` and/or the `sample_len` parameters.
+* **Resolution Note**: The chosen `image_size` of 480x640 corresponds to the native resolution of the custom-designed coded-exposure camera used for our research.
+* **Compression Impact**: Reducing the `sample_length` will inherently decrease the effective compression ratio for the Snapshot Compressed Imaging (SCI) process.
 Before starting training, you must download the Dynamic Replica dataset.
 ### Execution
 If you are running on a Linux machine, use the provided shell script for training:
@@ -66,5 +66,5 @@ If you are running on a Linux machine, use the provided shell script for trainin
 For other operating systems, you can open the `./train.csh` file and manually copy and execute the instruction.
 
 ## License
-[DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) is licensed under CC-BY-NC, however portions of the project are available under separate license terms: [RAFT-Stereo](https://github.com/princeton-vl/RAFT-Stereo) is licensed under the MIT license, [LoFTR](https://github.com/zju3dv/LoFTR) and [CREStereo](https://github.com/megvii-research/CREStereo) are licensed under the Apache 2.0 license.
+Portions of the project are available under separate license terms: [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) is licensed under CC-BY-NC, [RAFT-Stereo](https://github.com/princeton-vl/RAFT-Stereo) is licensed under the MIT license, [LoFTR](https://github.com/zju3dv/LoFTR) and [CREStereo](https://github.com/megvii-research/CREStereo) are licensed under the Apache 2.0 license.
 
