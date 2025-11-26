@@ -1,29 +1,11 @@
-# [CVPR 2023] DynamicStereo: Consistent Dynamic Depth from Stereo Videos.
-
-**[Meta AI Research, FAIR](https://ai.facebook.com/research/)**; **[University of Oxford, VGG](https://www.robots.ox.ac.uk/~vgg/)**
-
-[Nikita Karaev](https://nikitakaraevv.github.io/), [Ignacio Rocco](https://www.irocco.info/), [Benjamin Graham](https://ai.facebook.com/people/benjamin-graham/), [Natalia Neverova](https://nneverova.github.io/), [Andrea Vedaldi](https://www.robots.ox.ac.uk/~vedaldi/), [Christian Rupprecht](https://chrirupp.github.io/)
-
-[[`Paper`](https://research.facebook.com/publications/dynamicstereo-consistent-dynamic-depth-from-stereo-videos/)] [[`Project`](https://dynamic-stereo.github.io/)] [[`BibTeX`](#citing-dynamicstereo)]
+# [ECE1508 Final Project] Joint Learning of Exposure Patterns and Stereo Depth from Coded Snapshots
 
 ![nikita-reading](https://user-images.githubusercontent.com/37815420/236242052-e72d5605-1ab2-426c-ae8d-5c8a86d5252c.gif)
 
-**DynamicStereo** is a transformer-based architecture for temporally consistent depth estimation from stereo videos. It has been trained on a combination of two datasets: [SceneFlow](https://lmb.informatik.uni-freiburg.de/resources/datasets/SceneFlowDatasets.en.html) and **Dynamic Replica** that we present below.
+This project introduces a novel, end-to-end learning approach that jointly addresses two traditionally separate computer vision challenges: Snapshot Compressed Image (SCI) decoding and dynamic stereo depth estimation. The framework is an adaptation of the [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) repository and was trained using the [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset.
 
 ## Dataset
-
-https://user-images.githubusercontent.com/37815420/236239579-7877623c-716b-4074-a14e-944d095f1419.mp4
-
-The dataset consists of 145200 *stereo* frames (524 videos) with humans and animals in motion. 
-
-We provide annotations for both *left and right* views, see [this notebook](https://github.com/facebookresearch/dynamic_stereo/blob/main/notebooks/Dynamic_Replica_demo.ipynb):  
-- camera intrinsics and extrinsics
-- image depth (can be converted to disparity with intrinsics)
-- instance segmentation masks
-- binary foreground / background segmentation masks
-- optical flow (released!)
-- long-range pixel trajectories (released!)
-
+The [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset consists of 145200 *stereo* frames (524 videos) with humans and animals in motion. 
 
 ### Download the Dynamic Replica dataset
 Due to the enormous size of the original dataset, we created the `links_lite.json` file to enable quick testing by downloading just a small portion of the dataset.
