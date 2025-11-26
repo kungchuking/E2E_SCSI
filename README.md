@@ -22,9 +22,8 @@ Describes installation of DynamicStereo with the latest PyTorch3D, PyTorch 1.12.
 
 ### Setup the root for all source files:
 ```
-git clone https://github.com/facebookresearch/dynamic_stereo
+git clone https://github.com/kungchuking/E2E_SCSI.git
 cd dynamic_stereo
-export PYTHONPATH=`(cd ../ && pwd)`:`pwd`:$PYTHONPATH
 ```
 ### Create a conda env:
 ```
@@ -33,23 +32,10 @@ conda activate dynamicstereo
 ```
 ### Install requirements
 ```
-conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
-# It will require some time to install PyTorch3D. In the meantime, you may want to take a break and enjoy a cup of coffee.
+pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
 pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 pip install -r requirements.txt
 ```
-
-### (Optional) Install RAFT-Stereo
-```
-mkdir third_party
-cd third_party
-git clone https://github.com/princeton-vl/RAFT-Stereo
-cd RAFT-Stereo
-bash download_models.sh
-cd ../..
-```
-
-
 
 ## Evaluation
 To download the checkpoints, you can follow the below instructions:
