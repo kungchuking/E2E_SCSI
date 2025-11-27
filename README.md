@@ -1,6 +1,6 @@
 # [ECE1508 Final Project] Joint Learning of Exposure Patterns and Stereo Depth from Coded Snapshots
 
-![nikita-reading](https://user-images.githubusercontent.com/37815420/236242052-e72d5605-1ab2-426c-ae8d-5c8a86d5252c.gif)
+![TeddyBear](images/teddy_bear.gif)
 
 This project introduces a novel, end-to-end learning approach that jointly addresses two traditionally separate computer vision challenges: Snapshot Compressed Image (SCI) decoding and dynamic stereo depth estimation. The framework is an adaptation of the [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) repository and was trained using the [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset.
 
