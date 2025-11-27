@@ -412,6 +412,7 @@ class DynamicStereo(nn.Module):
             net_dw8, inp_dw8 = torch.split(fmap1_dw8, [hdim, hdim], dim=1)
             net_dw8 = torch.tanh(net_dw8)
             inp_dw8 = F.relu(inp_dw8)
+
         # Cascaded refinement (1/16 + 1/8 + 1/4)
         predictions = []
         flow = None

@@ -43,10 +43,10 @@ To download the pre-trained model weights (checkpoints), please follow the instr
 You can use the following commands to create the required directory and download the primary checkpoint directly from the Hugging Face repository:
 ```
 mkdir dynamicstereo_sf_dr
-wget -O dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth "https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth"
+wget -O dynamicstereo_sf_dr/model_dynamic-stereo_020358.pth "https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_020358.pth"
 ```
 ### Manual Download
-Alternatively, you can manually download the checkpoints by clicking the [link](https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_010179.pth). Ensure the downloaded file is placed in the required path: `./dynamicstereo_sf_dr/`.
+Alternatively, you can manually download the checkpoints by clicking the [link](https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_020358.pth). Ensure the downloaded file is placed in the required path: `./dynamicstereo_sf_dr/`.
 
 ### Evaluation Notebook
 For detailed instructions on how to evaluate the model, please refer to the dedicated [evaluation notebook](https://github.com/kungchuking/E2E_SCSI/blob/master/notebooks/evaluate.ipynb).
