@@ -4,140 +4,183 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import json
+import sys
+sys.path.append("../")
+
+import argparse
+import logging
+from pathlib import Path
+from tqdm import tqdm
 import os
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
-
-import hydra
-import numpy as np
-
 import torch
-from omegaconf import OmegaConf
+import torch.nn as nn
+import torch.optim as optim
 
-from dynamic_stereo.evaluation.utils.utils import aggregate_and_print_results
+from munch import DefaultMunch
+import json
+from pytorch_lightning.lite import LightningLite
+from torch.cuda.amp import GradScaler
 
-import dynamic_stereo.datasets.dynamic_stereo_datasets as datasets
-
-from dynamic_stereo.models.core.model_zoo import (
-    get_all_model_default_configs,
-    model_zoo,
+from train_utils.utils import (
+    run_test_eval,
+    save_ims_to_tb,
+    count_parameters,
 )
-from pytorch3d.implicitron.tools.config import get_default_args_field
-from dynamic_stereo.evaluation.core.evaluator import Evaluator
+from train_utils.logger import Logger
+from models.core.dynamic_stereo import DynamicStereo
+from models.core.sci_codec import sci_encoder
+from evaluation.core.evaluator import Evaluator
+from train_utils.losses import sequence_loss
+import datasets.dynamic_stereo_datasets as datasets
 
+class wrapper(nn.Module):
+    def __init__(
+            self, 
+            sigma_range=[0, 1e-9],
+            num_frames=8,
+            in_channels=1,
+            n_taps=2,
+            resolution=[480, 640],
+            mixed_precision=True,
+            attention_type="self_stereo_temporal_update_time_update_space",
+            update_block_3d=True,
+            different_update_blocks=True,
+            train_iters=16):
 
-@dataclass(eq=False)
-class DefaultConfig:
-    exp_dir: str = "./outputs"
+        super(wrapper, self).__init__()
 
-    # one of [sintel, dynamicreplica, things]
-    dataset_name: str = "dynamicreplica"
+        self.train_iters = train_iters
 
-    sample_len: int = -1
-    dstype: Optional[str] = None
-    # clean, final
-    MODEL: Dict[str, Any] = field(
-        default_factory=lambda: get_all_model_default_configs()
-    )
-    EVALUATOR: Dict[str, Any] = get_default_args_field(Evaluator)
+        self.sci_enc_L = sci_encoder(sigma_range=sigma_range,
+                                     n_frame=num_frames,
+                                     in_channels=in_channels,
+                                     n_taps=n_taps,
+                                     resolution=resolution)
+        self.sci_enc_R = sci_encoder(sigma_range=sigma_range,
+                                     n_frame=num_frames,
+                                     in_channels=in_channels,
+                                     n_taps=n_taps,
+                                     resolution=resolution)
 
-    seed: int = 42
-    gpu_idx: int = 0
+        self.stereo = DynamicStereo(max_disp=256,
+                                    mixed_precision=mixed_precision,
+                                    num_frames=num_frames,
+                                    attention_type=attention_type,
+                                    use_3d_update_block=update_block_3d,
+                                    different_update_blocks=different_update_blocks)
 
-    visualize_interval: int = 0  # Use 0 for no visualization
+    def forward(self, batch):
+        # ---- ---- FORWARD PASS ---- ----
+        # -- Modified by Chu King on 20th November 2025
+        
+        # -- print ("[INFO] batch[\"img\"].device: ", batch["img"].device)
 
-    # Override hydra's working directory to current working dir,
-    # also disable storing the .hydra logs:
-    hydra: dict = field(
-        default_factory=lambda: {
-            "run": {"dir": "."},
-            "output_subdir": None,
+        # 0) Convert to Gray
+        def rgb_to_gray(x):
+            weights = torch.tensor([0.2989, 0.5870, 0.1140], dtype=x.dtype, device=x.device)
+            gray = (x * weights[None, None, :, None, None]).sum(dim=2)
+            return gray # -- shape: [B, T, H, W]
+        
+        video_L = rgb_to_gray(batch["img"][:, :, 0]) # ~ (b, t, h, w)
+        video_R = rgb_to_gray(batch["img"][:, :, 1]) # ~ (b, t, h, w)
+
+        # -- print ("[INFO] video_L.device: ", video_L.device)
+        
+        # 1) Extract and normalize input videos.
+        # -- min_max_norm = lambda x : 2. * (x / 255.) - 1.
+        min_max_norm = lambda x: x / 255.
+        video_L = min_max_norm(video_L) # ~ (b, t, h, w)
+        video_R = min_max_norm(video_R) # ~ (b, t, h, w)
+        # -- print ("[INFO] video_L.device: ", video_L.device)
+        
+        # 2) If the tensor is non-contiguous and we try .view() later, PyTorch will raise an error:
+        video_L = video_L.contiguous()
+        video_R = video_R.contiguous()
+
+        # -- print ("[INFO] video_L.device: ", video_L.device)
+        
+        # 3) Coded exposure modeling.
+        snapshot_L = self.sci_enc_L(video_L) # ~ (b, c, h, w) -- c=2 for 2 taps
+        snapshot_R = self.sci_enc_R(video_R) # ~ (b, c, h, w) -- c=2 for 2 taps
+
+        # -- print ("[INFO] self.sci_enc_L.device: ", next(self.sci_enc_R.parameters()).device)
+        # -- print ("[INFO] snapshot_L.device: ", snapshot_L.device)
+        
+        # 4) Dynamic Stereo
+        output = {}
+        
+        disparities = self.stereo(
+            snapshot_L,
+            snapshot_R,
+            iters=self.train_iters,
+            test_mode=False
+        )
+        
+        n_views = len(batch["disp"][0]) # -- sample_len
+        for i in range(n_views):
+            seq_loss, metrics = sequence_loss(
+                disparities[:, i], batch["disp"][:, i, 0], batch["valid_disp"][:, i, 0]
+            )
+
+            output[f"disp_{i}"] = {"loss": seq_loss / n_views, "metrics": metrics}
+        output["disparity"] = {
+            "predictions": torch.cat(
+                [disparities[-1, i, 0] for i in range(n_views)], dim=1
+            ).detach(),
         }
-    )
-
-
-def run_eval(cfg: DefaultConfig):
-    """
-    Evaluates new view synthesis metrics of a specified model
-    on a benchmark dataset.
-    """
-    # make the experiment directory
-    os.makedirs(cfg.exp_dir, exist_ok=True)
-
-    # dump the exp cofig to the exp_dir
-    cfg_file = os.path.join(cfg.exp_dir, "expconfig.yaml")
-    with open(cfg_file, "w") as f:
-        OmegaConf.save(config=cfg, f=f)
-
-    torch.manual_seed(cfg.seed)
-    np.random.seed(cfg.seed)
-    evaluator = Evaluator(**cfg.EVALUATOR)
-
-    model = model_zoo(**cfg.MODEL)
-    model.cuda(0)
-    evaluator.setup_visualization(cfg)
-
-    if cfg.dataset_name == "dynamicreplica":
-        test_dataloader = datasets.DynamicReplicaDataset(
-            split="valid", sample_len=cfg.sample_len, only_first_n_samples=1
-        )
-    elif cfg.dataset_name == "sintel":
-        test_dataloader = datasets.SequenceSintelStereo(dstype=cfg.dstype)
-    elif cfg.dataset_name == "things":
-        test_dataloader = datasets.SequenceSceneFlowDatasets(
-            {},
-            dstype=cfg.dstype,
-            sample_len=cfg.sample_len,
-            add_monkaa=False,
-            add_driving=False,
-            things_test=True,
-        )
-    elif cfg.dataset_name == "real":
-        for real_sequence_name in ["teddy_static", "ignacio_waving", "nikita_reading"]:
-            ds_path = f"./dynamic_replica_data/real/{real_sequence_name}"
-            # seq_len_real = 20
-            real_dataset = datasets.DynamicReplicaDataset(
-                split="test",
-                sample_len=cfg.sample_len,
-                root=ds_path,
-                only_first_n_samples=1,
-            )
-
-            evaluator.evaluate_sequence(
-                model=model,
-                test_dataloader=real_dataset,
-                is_real_data=True,
-                train_mode=False,
-            )
-        return
-
-    print()
-
-    evaluate_result = evaluator.evaluate_sequence(
-        model,
-        test_dataloader,
-    )
-
-    aggreegate_result = aggregate_and_print_results(evaluate_result)
-
-    result_file = os.path.join(cfg.exp_dir, f"result_eval.json")
-
-    print(f"Dumping eval results to {result_file}.")
-    with open(result_file, "w") as f:
-        json.dump(aggreegate_result, f)
-
-
-cs = hydra.core.config_store.ConfigStore.instance()
-cs.store(name="default_config_eval", node=DefaultConfig)
-
-
-@hydra.main(config_path="./configs/", config_name="default_config_eval")
-def evaluate(cfg: DefaultConfig) -> None:
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.gpu_idx)
-    run_eval(cfg)
-
+        return output
 
 if __name__ == "__main__":
-    evaluate()
+    eval_dataloader_dr = datasets.DynamicReplicaDataset(
+        split="valid", sample_len=8, only_first_n_samples=1, VERBOSE=False, root="../dynamic_replica_data", t_step_validation=4
+    )
+    
+    eval_dataloader_sintel_clean = datasets.SequenceSintelStereo(dstype="clean")
+    eval_dataloader_sintel_final = datasets.SequenceSintelStereo(dstype="final")
+    
+    eval_dataloaders = [
+        ("sintel_clean", eval_dataloader_sintel_clean),
+        ("sintel_final", eval_dataloader_sintel_final),
+        ("dynamic_replica", eval_dataloader_dr),
+    ]
+    
+    evaluator = Evaluator()
+    
+    eval_vis_cfg = {
+        "visualize_interval": 1,  # Use 0 for no visualization
+        "exp_dir": "./"
+    }
+    eval_vis_cfg = DefaultMunch.fromDict(eval_vis_cfg, object())
+    evaluator.setup_visualization(eval_vis_cfg)
+    
+    # ----------------------------------------- Model Instantiation -----------------------------------------------
+    model = wrapper(sigma_range=[0, 1e-9],
+                    num_frames=8,
+                    in_channels=1,
+                    n_taps=2,
+                    resolution=[480, 640],
+                    mixed_precision=True,
+                    attention_type="self_stereo_temporal_update_time_update_space",
+                    update_block_3d=True,
+                    different_update_blocks=True,
+                    train_iters=8)
+
+    ckpt_path = "../dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth"
+    state_dict = torch.load(ckpt_path, map_location=torch.device('cpu'))
+    model.load_state_dict(state_dict["model"], strict=True)
+    model.eval()
+
+    run_test_eval(
+        ckpt_path="./",
+        eval_type="valid",
+        evaluator=evaluator,
+        sci_enc_L=model.sci_enc_L,
+        sci_enc_R=model.sci_enc_R,
+        model=model.stereo,
+        dataloaders=eval_dataloaders,
+        writer=None,
+        step=None,
+        resolution=[480, 640]
+    )
+    
+
