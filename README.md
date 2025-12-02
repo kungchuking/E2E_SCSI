@@ -1,6 +1,6 @@
 # [ECE1508 Final Project] Joint Learning of Exposure Patterns and Stereo Depth from Coded Snapshots
 
-![TeddyBear](images/overview.gif)
+![Overview](images/overview.gif)
 
 This project introduces a novel, end-to-end learning approach that jointly addresses two traditionally separate computer vision challenges: Snapshot Compressed Image (SCI) decoding and dynamic stereo depth estimation. The framework is an adaptation of the [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) repository and was trained using the [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset.
 
@@ -43,13 +43,20 @@ To download the pre-trained model weights (checkpoints), please follow the instr
 You can use the following commands to create the required directory and download the primary checkpoint directly from the Hugging Face repository:
 ```
 mkdir dynamicstereo_sf_dr
-wget -O dynamicstereo_sf_dr/model_dynamic-stereo_030537.pth "https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_030537.pth"
+wget -O dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth "https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth"
 ```
 ### Manual Download
-Alternatively, you can manually download the checkpoints by clicking the [link](https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_030537.pth). Ensure the downloaded file is placed in the required path: `./dynamicstereo_sf_dr/`.
+Alternatively, you can manually download the checkpoints by clicking the [link](https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth). Ensure the downloaded file is placed in the required path: `./dynamicstereo_sf_dr/`.
 
 ### Evaluation Notebook
-For detailed instructions on how to evaluate the model, please refer to the dedicated [evaluation notebook](https://github.com/kungchuking/E2E_SCSI/blob/master/notebooks/evaluate.ipynb).
+For detailed instructions on how to evaluate the model, please refer to the dedicated [evaluation notebook](https://huggingface.co/kungchuking/E2E_SCSI/blob/main/notebooks/evaluate.ipynb).
+
+### Evaluation and Validation
+To execute the final evaluation on the DynamicReplica test set, navigate to the `evaluation`directory and run the following Python script:
+```
+cd evaluation
+python evaluate.py
+```
 
 ## Training
 ### Hardware and Memory Requirements
