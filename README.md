@@ -59,6 +59,7 @@ To download the pre-trained model weights (checkpoints), please follow the instr
 
 ### Command Line Download
 You can use the following commands to create the required directory and download the primary checkpoint directly from the Hugging Face repository.
+
 **For Linux**
 ```
 mkdir dynamicstereo_sf_dr
