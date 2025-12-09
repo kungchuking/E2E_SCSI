@@ -27,6 +27,11 @@ python -m pip install "pip<24"
 pip install torch==2.1.0+cu121 torchvision==0.16.0+cu121 torchaudio==2.1.0 --extra-index-url https://download.pytorch.org/whl/cu121
 pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 pip install -r requirements.txt
+
+python -m pip install --upgrade pip setuptools wheel
+pip install --only-binary=:all: pywinpty==2.0.12
+pip install jupyter
+
 ```
 
 ## Dataset
