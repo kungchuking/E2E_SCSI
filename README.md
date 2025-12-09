@@ -4,18 +4,6 @@
 
 This project introduces a novel, end-to-end learning approach that jointly addresses two traditionally separate computer vision challenges: Snapshot Compressed Image (SCI) decoding and dynamic stereo depth estimation. The framework is an adaptation of the [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) repository and was trained using the [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset.
 
-## Dataset
-The [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset consists of 145200 *stereo* frames (524 videos) with humans and animals in motion. 
-
-### Download the Dynamic Replica dataset
-Due to the enormous size of the original dataset, we created the `links_lite.json` file to enable quick testing by downloading just a small portion of the dataset.
-
-```
-python ./scripts/download_dynamic_replica.py --link_list_file links_lite.json --download_folder ./dynamic_replica_data --download_splits test train valid real
-```
-
-To download the full dataset, please visit [the original site](https://github.com/facebookresearch/dynamic_stereo) created by Meta.
-
 ## Installation
 To set up and run the project, please follow these steps.
 
@@ -35,6 +23,18 @@ pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --e
 pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
 pip install -r requirements.txt
 ```
+
+## Dataset
+The [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset consists of 145200 *stereo* frames (524 videos) with humans and animals in motion. 
+
+### Download the Dynamic Replica dataset
+Due to the enormous size of the original dataset, we created the `links_lite.json` file to enable quick testing by downloading just a small portion of the dataset.
+
+```
+python ./scripts/download_dynamic_replica.py --link_list_file links_lite.json --download_folder ./dynamic_replica_data --download_splits test train valid real
+```
+
+To download the full dataset, please visit [the original site](https://github.com/facebookresearch/dynamic_stereo) created by Meta.
 
 ## Evaluation
 To download the pre-trained model weights (checkpoints), please follow the instructions below.
