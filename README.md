@@ -10,7 +10,7 @@ To set up and run the project, please follow these steps.
 ### Setup the root for all source files:
 ```
 git clone https://github.com/kungchuking/E2E_SCSI.git
-cd dynamic_stereo
+cd E2E_SCSI
 ```
 ### Create a conda env:
 ```
