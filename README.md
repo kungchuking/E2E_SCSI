@@ -18,6 +18,18 @@ conda create -n dynamicstereo python=3.8
 conda activate dynamicstereo
 ```
 ### Install requirements
+**For Linux**
+```
+python -m pip install "pip<24"
+pip install torch==2.1.0+cu121 torchvision==0.16.0+cu121 torchaudio==2.1.0 --extra-index-url https://download.pytorch.org/whl/cu121
+pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+pip install -r requirements.txt
+
+python -m pip install --upgrade pip setuptools wheel
+pip install jupyter
+
+```
+**For Windows**
 ```
 python -m pip install "pip<24"
 pip install torch==2.1.0+cu121 torchvision==0.16.0+cu121 torchaudio==2.1.0 --extra-index-url https://download.pytorch.org/whl/cu121
