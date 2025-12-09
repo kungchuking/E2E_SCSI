@@ -16,6 +16,7 @@ cd E2E_SCSI
 ```
 conda create -n dynamicstereo python=3.8
 conda activate dynamicstereo
+conda install jupyter notebook
 ```
 ### Install requirements
 ```
