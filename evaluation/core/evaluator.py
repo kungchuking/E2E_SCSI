@@ -124,7 +124,10 @@ class Evaluator(Configurable):
                     torch.tensor([pred_disp.shape[2], pred_disp.shape[3]])[None],
                 )
 
-                perception_prediction.depth_map = (scale / pred_disp).cuda()
+                try:
+                    perception_prediction.depth_map = (scale / pred_disp).cuda()
+                except RuntimeError:
+                    perception_prediction.depth_map = (scale / pred_disp)
                 perspective_cameras = []
                 for cam in sequence["viewpoint"]:
                     perspective_cameras.append(cam[0])
@@ -135,9 +138,14 @@ class Evaluator(Configurable):
                 if "stereo_original_video" in batch_dict:
                     batch_dict["stereo_video"] = batch_dict["stereo_original_video"][..., :resolution[0], :resolution[1]].clone()
 
-                for k, v in batch_dict.items():
-                    if isinstance(v, torch.Tensor):
-                        batch_dict[k] = v.cuda()
+                try:
+                    for k, v in batch_dict.items():
+                        if isinstance(v, torch.Tensor):
+                            batch_dict[k] = v.cuda()
+                except RuntimeError:
+                    for k, v in batch_dict.items():
+                        if isinstance(v, torch.Tensor):
+                            batch_dict[k] = v
 
                 visualize_batch(
                     batch_dict,

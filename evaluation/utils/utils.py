@@ -276,7 +276,10 @@ def visualize_batch(
         R, T, cam_ = pcd_global_seq[ref_frame][2]
 
         median_depth = preds.depth_map.median()
-        cam_.cuda()
+        try:
+            cam_.cuda()
+        except RuntimeError:
+            pass
 
         for mode in ["angle_15", "angle_-15", "changing_angle"]:
             res = []
