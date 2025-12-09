@@ -84,7 +84,7 @@ python evaluate.py
 
 ## Training
 ### Hardware and Memory Requirements
-Training the model requires a minimum of a 50GB GPU.
+Training the model requires a minimum of a 50GB GPU. CPU-only training is **not** supported.
 * **Memory Adjustment**: If your GPU memory is limited, you may decrease the `image_size` and/or the `sample_len` parameters.
 * **Resolution Note**: The chosen `image_size` of 480x640 corresponds to the native resolution of the custom-designed coded-exposure camera used for our research.
 * **Compression Impact**: Reducing the `sample_length` will inherently decrease the effective compression ratio for the Snapshot Compressed Imaging (SCI) process.
