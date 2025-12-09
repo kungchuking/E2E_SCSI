@@ -5,7 +5,11 @@
 This project introduces a novel, end-to-end learning approach that jointly addresses two traditionally separate computer vision challenges: Snapshot Compressed Image (SCI) decoding and dynamic stereo depth estimation. The framework is an adaptation of the [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) repository and was trained using the [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset.
 
 ## Installation
-To set up and run the project, please follow these steps.
+The following instructions are designed and tested for **Linux environments only**.
+
+While the core dependencies are the same for Windows, successful installation often requires compiling certain components from source and may involve convoluted steps. Users wishing to run the project on Windows are expected to manage these platform-specific installation details independently.
+
+To set up and run the project in a Linux environment, please follow these steps:
 
 ### Setup the root for all source files:
 ```
@@ -16,7 +20,6 @@ cd E2E_SCSI
 ```
 conda create -n dynamicstereo python=3.8
 conda activate dynamicstereo
-conda install jupyter notebook
 ```
 ### Install requirements
 ```
