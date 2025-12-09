@@ -5,7 +5,7 @@
 This project introduces a novel, end-to-end learning approach that jointly addresses two traditionally separate computer vision challenges: Snapshot Compressed Image (SCI) decoding and dynamic stereo depth estimation. The framework is an adaptation of the [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) repository and was trained using the [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset.
 
 ## Installation
-To set up and run the project in a Linux environment, please follow these steps:
+To set up and run the project, please follow these steps:
 
 ### Setup the root for all source files:
 ```
