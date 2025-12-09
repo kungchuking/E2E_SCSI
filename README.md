@@ -5,10 +5,6 @@
 This project introduces a novel, end-to-end learning approach that jointly addresses two traditionally separate computer vision challenges: Snapshot Compressed Image (SCI) decoding and dynamic stereo depth estimation. The framework is an adaptation of the [DynamicStereo](https://github.com/facebookresearch/dynamic_stereo) repository and was trained using the [DynamicReplica](https://github.com/facebookresearch/dynamic_stereo) dataset.
 
 ## Installation
-The following instructions are designed and tested for **Linux environments only**.
-
-While the core dependencies are the same for Windows, successful installation often requires compiling certain components from source and may involve convoluted steps. Users wishing to run the project on Windows are expected to manage these platform-specific installation details independently.
-
 To set up and run the project in a Linux environment, please follow these steps:
 
 ### Setup the root for all source files:
@@ -50,10 +46,16 @@ To download the full dataset, please visit [the original site](https://github.co
 To download the pre-trained model weights (checkpoints), please follow the instructions below.
 
 ### Command Line Download
-You can use the following commands to create the required directory and download the primary checkpoint directly from the Hugging Face repository:
+You can use the following commands to create the required directory and download the primary checkpoint directly from the Hugging Face repository.
+**For Linux**
 ```
 mkdir dynamicstereo_sf_dr
 wget -O dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth "https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth"
+```
+**For Windows**
+```
+mkdir dynamicstereo_sf_dr
+curl -L -o dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth "https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth"
 ```
 ### Manual Download
 Alternatively, you can manually download the checkpoints by clicking the [link](https://huggingface.co/kungchuking/E2E_SCSI/resolve/main/dynamicstereo_sf_dr/model_dynamic-stereo_050895.pth). Ensure the downloaded file is placed in the required path: `./dynamicstereo_sf_dr/`.
